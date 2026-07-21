@@ -1,0 +1,100 @@
+# =========================
+# Build Outputs
+# =========================
+**/bin/
+**/obj/
+**/dist/
+**/build/
+**/out/
+
+# =========================
+# Dependencies
+# =========================
+**/node_modules/
+
+# =========================
+# IDE and Editor Files
+# =========================
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Rider / IntelliJ
+.idea/
+*.iml
+
+# =========================
+# OS-Generated Files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Logs and Temporary Files
+# =========================
+*.log
+*.out.log
+logs/
+**/logs/
+**/Logs/
+*.tmp
+*.cache
+*.temp
+
+# =========================
+# Environment and Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# ASP.NET local/development-only settings
+appsettings.Development.json
+appsettings.Local.json
+backend/appsettings.json
+backend/appsettings.Production.json
+backend/appsettings.*.json
+!backend/appsettings.example.json
+
+# Generic secret/key material
+secrets.json
+*.pfx
+*.snk
+*.key
+*.pem
+
+# =========================
+# Database Artifacts
+# =========================
+*.mdf
+*.ldf
+*.bak
+*.sqlite
+*.sqlite3
+*.db
+
+# =========================
+# Optional Runtime/Test Artifacts
+# =========================
+coverage/
+.nyc_output/
+TestResults/
+
+# =========================
+# Keep Important Files in VCS
+# (Explicitly not ignored)
+# =========================
+!package-lock.json
+!README.md
+!.editorconfig
+!.gitattributes
+!.github/
+!*.csproj
+!*.sln
