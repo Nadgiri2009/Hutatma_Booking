@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<Complaint>    Complaints    => Set<Complaint>();
     public DbSet<Cancellation> Cancellations => Set<Cancellation>();
     public DbSet<RefundRequest> RefundRequests => Set<RefundRequest>();
+    public DbSet<AdminLoginOtp> AdminLoginOtps => Set<AdminLoginOtp>();
+    public DbSet<RefundOtpChallenge> RefundOtpChallenges => Set<RefundOtpChallenge>();
     public DbSet<AuditLog>     AuditLogs     => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder mb)
@@ -97,6 +99,12 @@ public class AppDbContext : DbContext
             .HasIndex(r => r.RefundRequestNumber)
             .IsUnique();
 
+        mb.Entity<RefundOtpChallenge>()
+            .HasOne<Booking>()
+            .WithMany()
+            .HasForeignKey(c => c.BookingId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         mb.Entity<Role>().HasData(
             new Role { Id = 1, Name = "Admin", Description = "System Administrator", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5981) },
             new Role { Id = 2, Name = "Staff", Description = "Office Staff", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5990) },
@@ -111,7 +119,7 @@ public class AppDbContext : DbContext
                 Id = 1,
                 FullName = "Admin",
                 Email = "admin@hutatmamandir.org",
-                Mobile = "",
+                Mobile = "9588629955",
                 PasswordHash = "$2a$11$ae3/pgwmbVxQLGVEO8GrluWuCll2rnKltPvVbZ5HadGl0vRnx7VpK",
                 RoleId = 1,
                 IsActive = true,

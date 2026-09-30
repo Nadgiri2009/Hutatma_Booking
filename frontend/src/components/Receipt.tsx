@@ -133,6 +133,22 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
             <Row label="Payment Status"       value={payStatus} />
           </Grid>
 
+          {b.bankDetail && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom sx={{ mt: 1 }}>
+                Bank Account Details for Refund
+              </Typography>
+              <Grid container columnSpacing={4} rowSpacing={0.5}>
+                <Grid item xs={12} sm={6}><Row label="Account Holder" value={b.bankDetail.accountHolderName} /></Grid>
+                <Grid item xs={12} sm={6}><Row label="Bank Name" value={b.bankDetail.bankName} /></Grid>
+                <Grid item xs={12} sm={6}><Row label="Account Number" value={b.bankDetail.accountNumber} /></Grid>
+                <Grid item xs={12} sm={6}><Row label="IFSC Code" value={b.bankDetail.ifscCode} /></Grid>
+                <Grid item xs={12} sm={6}><Row label="Branch" value={b.bankDetail.branchName} /></Grid>
+                {b.bankDetail.micrCode && <Grid item xs={12} sm={6}><Row label="MICR Code" value={b.bankDetail.micrCode} /></Grid>}
+              </Grid>
+            </Grid>
+          )}
+
           {/* Charges Breakdown */}
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom sx={{ mt: 1 }}>

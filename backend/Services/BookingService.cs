@@ -329,6 +329,15 @@ public class BookingService : IBookingService
         ApplicantEmail  = b.Applicant?.Email ?? "",
         ApplicantAddress = b.Applicant?.Address ?? "",
         FunctionName    = b.Applicant?.FunctionName ?? "",
+        BankDetail = b.BankDetail == null ? null : new BankDetailDto
+        {
+            BankName = b.BankDetail.BankName,
+            AccountHolderName = b.BankDetail.AccountHolderName,
+            AccountNumber = b.BankDetail.AccountNumber,
+            IFSCCode = b.BankDetail.IFSCCode,
+            BranchName = b.BankDetail.BranchName,
+            MICRCode = b.BankDetail.MICRCode,
+        },
         PaymentTransactionRef = b.Payments.OrderByDescending(p => p.Id).FirstOrDefault(p => p.Status == "Paid")?.TransactionRef,
         PaymentMethod         = b.Payments.OrderByDescending(p => p.Id).FirstOrDefault()?.PaymentMethod,
         PaymentDate           = b.Payments.OrderByDescending(p => p.Id).FirstOrDefault(p => p.Status == "Paid")?.PaymentDate,

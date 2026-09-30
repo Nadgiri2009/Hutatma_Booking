@@ -313,6 +313,27 @@ public class RefundRequest
     [ForeignKey("BookingId")] public Booking Booking { get; set; } = null!;
 }
 
+public class AdminLoginOtp
+{
+    [Key, MaxLength(15)] public string Mobile { get; set; } = "";
+    [MaxLength(32)] public byte[] OtpHash { get; set; } = Array.Empty<byte>();
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    public int FailedAttempts { get; set; }
+    public DateTime? UsedAt { get; set; }
+}
+
+public class RefundOtpChallenge
+{
+    [Key] public int BookingId { get; set; }
+    [MaxLength(15)] public string Mobile { get; set; } = "";
+    [MaxLength(32)] public byte[] OtpHash { get; set; } = Array.Empty<byte>();
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    public int FailedAttempts { get; set; }
+    public DateTime? UsedAt { get; set; }
+}
+
 public class AuditLog
 {
     public int Id { get; set; }

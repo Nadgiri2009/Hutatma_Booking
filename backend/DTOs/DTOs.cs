@@ -1,10 +1,21 @@
 namespace HutatmaBooking.API.DTOs;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-public class LoginRequestDto
+public class AdminOtpRequestDto
 {
-    public string Email    { get; set; } = "";
-    public string Password { get; set; } = "";
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{10}$")]
+    public string Mobile { get; set; } = "";
+}
+public class AdminOtpVerifyDto
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{10}$")]
+    public string Mobile { get; set; } = "";
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{6}$")]
+    public string Otp { get; set; } = "";
 }
 public class LoginResponseDto
 {
@@ -138,6 +149,7 @@ public class BookingResponseDto
     public string   ApplicantEmail  { get; set; } = "";
     public string   ApplicantAddress { get; set; } = "";
     public string   FunctionName    { get; set; } = "";
+    public BankDetailDto? BankDetail { get; set; }
     public string?  PaymentTransactionRef { get; set; }
     public string?  PaymentMethod   { get; set; }
     public DateOnly? PaymentDate    { get; set; }

@@ -38,6 +38,7 @@ public class BookingRepository : IBookingRepository
             .Include(b => b.Venue)
             .Include(b => b.VenuePricing)
             .Include(b => b.Applicant)
+            .Include(b => b.BankDetail)
             .Include(b => b.Payments)
             .Include(b => b.EquipmentItems)
             .Include(b => b.Receipts)
@@ -160,6 +161,10 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email) =>
         await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == email);
+
+    public async Task<User?> GetAdminByMobileAsync(string mobile) =>
+        await _db.Users.Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Mobile == mobile && (u.Role.Name == "Admin" || u.Role.Name == "Staff"));
 
     public async Task<User?> GetByIdAsync(int id) =>
         await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);

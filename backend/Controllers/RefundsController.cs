@@ -1,9 +1,13 @@
 using HutatmaBooking.API.Data;
 using HutatmaBooking.API.Models;
+using HutatmaBooking.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using System.Data;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace HutatmaBooking.API.Controllers;
 
@@ -11,9 +15,18 @@ namespace HutatmaBooking.API.Controllers;
 [Route("api/refunds")]
 public class RefundsController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private static readonly TimeSpan OtpLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan OtpRequestCooldown = TimeSpan.FromSeconds(30);
+    private const int MaxOtpAttempts = 5;
 
-    public RefundsController(AppDbContext db) => _db = db;
+    private readonly AppDbContext _db;
+    private readonly INotificationService _notifications;
+
+    public RefundsController(AppDbContext db, INotificationService notifications)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     [HttpGet("lookup")]
     public async Task<IActionResult> Lookup([FromQuery] string? bookingNumber, [FromQuery] string? mobile)
@@ -92,48 +105,155 @@ public class RefundsController : ControllerBase
         return Ok(requests.Select(request => ToTrackingRequest(request, isMobileSearch)));
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Apply([FromBody] ApplyRefundRequestDto dto)
+    [HttpPost("{bookingId:int}/request-otp")]
+    public async Task<IActionResult> RequestApplicationOtp(int bookingId, [FromBody] RefundOtpRequestDto dto)
     {
         var booking = await _db.Bookings
             .Include(b => b.Applicant)
             .Include(b => b.Payments)
-            .FirstOrDefaultAsync(b => b.Id == dto.BookingId);
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
         if (booking == null) return NotFound(new { error = "Booking not found." });
-        if (string.IsNullOrWhiteSpace(dto.Mobile) || booking.Applicant?.Mobile != dto.Mobile.Trim())
+        var mobile = dto.Mobile.Trim();
+        if (string.IsNullOrWhiteSpace(mobile) || booking.Applicant?.Mobile != mobile)
             return BadRequest(new { error = "The registered mobile number could not be verified." });
-        if (booking.Status == "Cancelled")
-            return Conflict(new { error = "This booking is cancelled and must be handled through the existing cancellation refund process." });
-        if (booking.Status != "Confirmed" || !booking.Payments.Any(p => p.Status == "Paid"))
-            return Conflict(new { error = "A refund request requires a confirmed booking with a recorded payment." });
+        var ineligibilityReason = GetRefundIneligibilityReason(booking);
+        if (ineligibilityReason != null) return Conflict(new { error = ineligibilityReason });
         if (await _db.RefundRequests.AnyAsync(r => r.BookingId == booking.Id))
             return Conflict(new { error = "A refund request already exists for this booking." });
 
-        var request = new RefundRequest
+        var now = DateTime.UtcNow;
+        var challenge = await _db.RefundOtpChallenges.FindAsync(booking.Id);
+        if (challenge != null && challenge.UsedAt == null && now - challenge.CreatedAt < OtpRequestCooldown)
+            return Conflict(new { error = "Wait 30 seconds before requesting another verification code." });
+
+        var otp = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        if (challenge == null)
         {
-            RefundRequestNumber = $"RF-{DateTime.UtcNow:yyyy}-{Guid.NewGuid():N}",
-            BookingId = booking.Id,
-            Status = "Requested",
-            RequestedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-        };
-        _db.RefundRequests.Add(request);
+            challenge = new RefundOtpChallenge { BookingId = booking.Id, Mobile = mobile };
+            _db.RefundOtpChallenges.Add(challenge);
+        }
+        challenge.Mobile = mobile;
+        challenge.OtpHash = SHA256.HashData(Encoding.UTF8.GetBytes(otp));
+        challenge.CreatedAt = now;
+        challenge.ExpiresAt = now.Add(OtpLifetime);
+        challenge.FailedAttempts = 0;
+        challenge.UsedAt = null;
+        await _db.SaveChangesAsync();
+
         try
         {
-            await _db.SaveChangesAsync();
+            await _notifications.SendOneTimeCodeAsync(mobile, otp, "refund application");
         }
-        catch (DbUpdateException exception) when (exception.InnerException is SqlException { Number: 2601 or 2627 })
+        catch (Exception)
         {
-            return Conflict(new { error = "A refund request already exists for this booking." });
+            challenge.UsedAt = DateTime.UtcNow;
+            challenge.OtpHash = new byte[32];
+            await _db.SaveChangesAsync();
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Could not deliver the verification code. Please try again later." });
         }
 
-        return Ok(new
+        return Ok(new { message = "A verification code was sent to the registered mobile number." });
+    }
+
+    [HttpPost("{bookingId:int}/apply-verified")]
+    public async Task<IActionResult> ApplyVerified(int bookingId, [FromBody] RefundOtpVerifyDto dto)
+    {
+        var mobile = dto.Mobile.Trim();
+        var otp = dto.Otp.Trim();
+        var result = await _db.Database.CreateExecutionStrategy().ExecuteAsync<IActionResult>(async () =>
         {
-            request.RefundRequestNumber,
-            booking.BookingNumber,
-            request.Status,
-            request.RequestedAt,
+            _db.ChangeTracker.Clear();
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var booking = await _db.Bookings
+                .Include(b => b.Applicant)
+                .Include(b => b.Payments)
+                .Include(b => b.BankDetail)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+            if (booking == null) return NotFound(new { error = "Booking not found." });
+            if (string.IsNullOrWhiteSpace(mobile) || booking.Applicant?.Mobile != mobile)
+                return BadRequest(new { error = "The registered mobile number could not be verified." });
+
+            var ineligibilityReason = GetRefundIneligibilityReason(booking);
+            if (ineligibilityReason != null) return Conflict(new { error = ineligibilityReason });
+            if (await _db.RefundRequests.AnyAsync(r => r.BookingId == booking.Id))
+                return Conflict(new { error = "A refund request already exists for this booking." });
+
+            var challenge = await _db.RefundOtpChallenges.SingleOrDefaultAsync(item => item.BookingId == bookingId);
+            var now = DateTime.UtcNow;
+            if (challenge == null || challenge.Mobile != mobile || challenge.UsedAt != null || challenge.ExpiresAt <= now)
+            {
+                if (challenge != null && challenge.UsedAt == null)
+                {
+                    challenge.UsedAt = now;
+                    challenge.OtpHash = new byte[32];
+                    await _db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                return BadRequest(new { error = "The verification code is invalid or expired. Request a new code." });
+            }
+
+            var suppliedHash = SHA256.HashData(Encoding.UTF8.GetBytes(otp));
+            if (!CryptographicOperations.FixedTimeEquals(challenge.OtpHash, suppliedHash))
+            {
+                challenge.FailedAttempts++;
+                if (challenge.FailedAttempts >= MaxOtpAttempts)
+                {
+                    challenge.UsedAt = now;
+                    challenge.OtpHash = new byte[32];
+                }
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return BadRequest(new { error = challenge.FailedAttempts >= MaxOtpAttempts
+                    ? "Too many incorrect codes. Request a new verification code."
+                    : "The verification code is incorrect." });
+            }
+
+            challenge.UsedAt = now;
+            challenge.OtpHash = new byte[32];
+            var request = new RefundRequest
+            {
+                RefundRequestNumber = $"RF-{now:yyyy}-{Guid.NewGuid():N}",
+                BookingId = booking.Id,
+                Status = "Requested",
+                RequestedAt = now,
+                UpdatedAt = now,
+            };
+            _db.RefundRequests.Add(request);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                request.RefundRequestNumber,
+                bookingNumber = booking.BookingNumber,
+                request.Status,
+                request.RequestedAt,
+                bankDetails = booking.BankDetail == null ? null : new
+                {
+                    booking.BankDetail.BankName,
+                    booking.BankDetail.AccountHolderName,
+                    booking.BankDetail.AccountNumber,
+                    booking.BankDetail.IFSCCode,
+                    booking.BankDetail.BranchName,
+                    booking.BankDetail.MICRCode,
+                },
+            });
         });
+
+        return result;
+    }
+
+    [HttpPost]
+    public IActionResult Apply([FromBody] ApplyRefundRequestDto dto) =>
+        Conflict(new { error = "Verify the registered mobile number with an OTP before applying for a refund." });
+
+    private static string? GetRefundIneligibilityReason(Booking booking)
+    {
+        if (booking.Status == "Cancelled")
+            return "This booking is cancelled and must be handled through the existing cancellation refund process.";
+        if (booking.Status != "Confirmed" || !booking.Payments.Any(p => p.Status == "Paid"))
+            return "A refund request requires a confirmed booking with a recorded payment.";
+        return null;
     }
 
     [Authorize(Policy = "StaffPlus")]
@@ -366,6 +486,24 @@ public class ApplyRefundRequestDto
 {
     public int BookingId { get; set; }
     public string Mobile { get; set; } = "";
+}
+
+public class RefundOtpRequestDto
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{10}$")]
+    public string Mobile { get; set; } = "";
+}
+
+public class RefundOtpVerifyDto
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{10}$")]
+    public string Mobile { get; set; } = "";
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{6}$")]
+    public string Otp { get; set; } = "";
 }
 
 public class ApproveRefundRequestDto

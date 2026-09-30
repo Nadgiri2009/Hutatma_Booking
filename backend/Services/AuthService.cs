@@ -1,8 +1,13 @@
 using HutatmaBooking.API.DTOs;
+using HutatmaBooking.API.Data;
+using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Repositories.Interfaces;
 using HutatmaBooking.API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Data;
+using System.Security.Cryptography;
 using System.Security.Claims;
 using System.Text;
 
@@ -10,37 +15,105 @@ namespace HutatmaBooking.API.Services;
 
 public class AuthService : IAuthService
 {
+    private static readonly TimeSpan OtpLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan OtpRequestCooldown = TimeSpan.FromSeconds(30);
+    private const int MaxOtpAttempts = 5;
+
     private readonly IUserRepository _userRepo;
+    private readonly AppDbContext _db;
     private readonly IConfiguration  _config;
     private readonly ILogger<AuthService> _logger;
 
-    public AuthService(IUserRepository userRepo, IConfiguration config, ILogger<AuthService> logger)
+    public AuthService(IUserRepository userRepo, AppDbContext db, IConfiguration config, ILogger<AuthService> logger)
     {
         _userRepo = userRepo;
+        _db       = db;
         _config   = config;
         _logger   = logger;
     }
 
-    public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto dto)
+    public async Task RequestAdminOtpAsync(string mobile)
     {
-        var user = await _userRepo.GetByEmailAsync(dto.Email);
-        if (user == null)
+        var normalizedMobile = mobile.Trim();
+        var user = await _userRepo.GetAdminByMobileAsync(normalizedMobile);
+        if (user == null || !user.IsActive || user.Role.Name is not ("Admin" or "Staff"))
         {
-            _logger.LogWarning("Login failed - user not found: {Email}", dto.Email);
+            _logger.LogInformation("Admin OTP request ignored for an ineligible account.");
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var challenge = await _db.AdminLoginOtps.FindAsync(normalizedMobile);
+        if (challenge != null && now - challenge.CreatedAt < OtpRequestCooldown)
+        {
+            _logger.LogInformation("Admin OTP request is cooling down for the submitted mobile number.");
+            return;
+        }
+
+        var otp = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        if (challenge == null)
+        {
+            challenge = new AdminLoginOtp { Mobile = normalizedMobile };
+            _db.AdminLoginOtps.Add(challenge);
+        }
+        challenge.OtpHash = SHA256.HashData(Encoding.UTF8.GetBytes(otp));
+        challenge.CreatedAt = now;
+        challenge.ExpiresAt = now.Add(OtpLifetime);
+        challenge.FailedAttempts = 0;
+        challenge.UsedAt = null;
+        await _db.SaveChangesAsync();
+        Console.WriteLine($"TEMPORARY ADMIN LOGIN OTP for {normalizedMobile}: {otp} (expires in 5 minutes)");
+    }
+
+    public async Task<LoginResponseDto?> VerifyAdminOtpAsync(string mobile, string otp)
+    {
+        var normalizedMobile = mobile.Trim();
+        var user = await _userRepo.GetAdminByMobileAsync(normalizedMobile);
+        if (user == null || !user.IsActive || user.Role.Name is not ("Admin" or "Staff"))
+        {
+            _logger.LogWarning("Admin OTP verification failed because the account is no longer eligible.");
             return null;
         }
 
-        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        var otpAccepted = await _db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            _logger.LogWarning("Login failed - invalid password for: {Email}", dto.Email);
-            return null;
-        }
+            _db.ChangeTracker.Clear();
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var challenge = await _db.AdminLoginOtps.SingleOrDefaultAsync(item => item.Mobile == normalizedMobile);
+            var now = DateTime.UtcNow;
+            if (challenge == null || challenge.UsedAt != null || challenge.ExpiresAt <= now)
+            {
+                if (challenge != null && challenge.UsedAt == null)
+                {
+                    challenge.UsedAt = now;
+                    challenge.OtpHash = new byte[32];
+                    await _db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                return false;
+            }
 
-        if (!user.IsActive)
-        {
-            _logger.LogWarning("Login failed - user inactive: {Email}", dto.Email);
-            return null;
-        }
+            var providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(otp.Trim()));
+            if (!CryptographicOperations.FixedTimeEquals(challenge.OtpHash, providedHash))
+            {
+                challenge.FailedAttempts++;
+                if (challenge.FailedAttempts >= MaxOtpAttempts)
+                {
+                    challenge.UsedAt = now;
+                    challenge.OtpHash = new byte[32];
+                }
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return false;
+            }
+
+            challenge.UsedAt = now;
+            challenge.OtpHash = new byte[32];
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return true;
+        });
+        if (!otpAccepted) return null;
 
         var token    = GenerateJwtToken(user.Id, user.Email, user.Role.Name);
         var expiresAt = DateTime.UtcNow.AddHours(

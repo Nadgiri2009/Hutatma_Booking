@@ -4,6 +4,7 @@ using HutatmaBooking.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HutatmaBooking.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930101711_PersistAdminLoginOtp")]
+    partial class PersistAdminLoginOtp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -662,38 +665,6 @@ namespace HutatmaBooking.API.Migrations
                     b.ToTable("Receipts");
                 });
 
-            modelBuilder.Entity("HutatmaBooking.API.Models.RefundOtpChallenge", b =>
-                {
-                    b.Property<int>("BookingId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("FailedAttempts")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Mobile")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
-                    b.Property<byte[]>("OtpHash")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varbinary(32)");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("BookingId");
-
-                    b.ToTable("RefundOtpChallenges");
-                });
-
             modelBuilder.Entity("HutatmaBooking.API.Models.RefundRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -1210,15 +1181,6 @@ namespace HutatmaBooking.API.Migrations
                     b.Navigation("Booking");
 
                     b.Navigation("Payment");
-                });
-
-            modelBuilder.Entity("HutatmaBooking.API.Models.RefundOtpChallenge", b =>
-                {
-                    b.HasOne("HutatmaBooking.API.Models.Booking", null)
-                        .WithMany()
-                        .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("HutatmaBooking.API.Models.RefundRequest", b =>

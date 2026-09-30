@@ -20,21 +20,21 @@ const slides = [
     title: 'Hutatma Smruti Mandir',
     subtitle: 'Book our venue for weddings, meetings and special events',
     cta: 'Book Now',
-    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1600&q=80',
+    image: '/HSM.jpg',
   },
   {
     bg: 'linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(26,58,107,0.6) 100%)',
     title: 'Grand Hall for Every Occasion',
     subtitle: 'Spacious, elegant and fully equipped venue in the heart of the city',
     cta: 'Check Availability',
-    image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1600&q=80',
+    image: '/HSM-1.jpg',
   },
   {
     bg: 'linear-gradient(135deg, rgba(15,35,64,0.9) 0%, rgba(44,94,168,0.7) 100%)',
     title: 'Celebrate Memorable Moments',
     subtitle: 'Professional staff, modern amenities and transparent pricing',
     cta: 'View Gallery',
-    image: 'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=1600&q=80',
+    image: '/HSM-2.jpg',
   },
 ];
 

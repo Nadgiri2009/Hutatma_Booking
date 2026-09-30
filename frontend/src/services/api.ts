@@ -33,8 +33,8 @@ export default api;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+  requestOtp: (mobile: string) => api.post('/auth/request-otp', { mobile }),
+  verifyOtp: (mobile: string, otp: string) => api.post('/auth/verify-otp', { mobile, otp }),
 };
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
@@ -51,7 +51,8 @@ export const bookingAPI = {
 export const refundAPI = {
   lookup: (params: { bookingNumber?: string; mobile?: string }) => api.get('/refunds/lookup', { params }),
   track: (params: { refundRequestNumber?: string; bookingNumber?: string; mobile?: string }) => api.get('/refunds/track', { params }),
-  apply: (data: { bookingId: number; mobile: string }) => api.post('/refunds', data),
+  requestOtp: (bookingId: number, mobile: string) => api.post(`/refunds/${bookingId}/request-otp`, { mobile }),
+  applyVerified: (bookingId: number, mobile: string, otp: string) => api.post(`/refunds/${bookingId}/apply-verified`, { mobile, otp }),
   getAll: () => api.get('/refunds'),
   verify: (id: number) => api.put(`/refunds/${id}/verify`),
   approve: (id: number, refundAmount: number) => api.put(`/refunds/${id}/approve`, { refundAmount }),

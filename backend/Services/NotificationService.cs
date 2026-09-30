@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Mail;
 using System.Text;
+using Microsoft.AspNetCore.Hosting;
 
 namespace HutatmaBooking.API.Services;
 
@@ -11,11 +12,32 @@ public class NotificationService : INotificationService
 {
     private readonly IConfiguration _config;
     private readonly ILogger<NotificationService> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public NotificationService(IConfiguration config, ILogger<NotificationService> logger)
+    public NotificationService(IConfiguration config, ILogger<NotificationService> logger, IWebHostEnvironment environment)
     {
         _config = config;
         _logger = logger;
+        _environment = environment;
+    }
+
+    public async Task SendOneTimeCodeAsync(string mobile, string otp, string purpose)
+    {
+        var accountSid = _config["PaymentNotifications:Twilio:AccountSid"];
+        var authToken = _config["PaymentNotifications:Twilio:AuthToken"];
+        if (!string.IsNullOrWhiteSpace(accountSid) && !string.IsNullOrWhiteSpace(authToken))
+        {
+            await SendSmsAsync(mobile, $"Your Hutatma Smruti Mandir {purpose} verification code is {otp}. It expires in 5 minutes.");
+            return;
+        }
+
+        if (_environment.IsDevelopment())
+        {
+            Console.WriteLine($"TEMPORARY {purpose.ToUpperInvariant()} OTP for {mobile}: {otp} (expires in 5 minutes)");
+            return;
+        }
+
+        throw new InvalidOperationException("SMS verification is not configured.");
     }
 
     public async Task SendBookingPaymentNotificationAsync(Booking booking, Payment payment, string receiptNumber)

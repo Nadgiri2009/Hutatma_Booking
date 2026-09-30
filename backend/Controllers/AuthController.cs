@@ -11,11 +11,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _auth;
     public AuthController(IAuthService auth) => _auth = auth;
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
+    [HttpPost("request-otp")]
+    public async Task<IActionResult> RequestOtp([FromBody] AdminOtpRequestDto dto)
     {
-        var result = await _auth.LoginAsync(dto);
-        if (result == null) return Unauthorized(new { message = "Invalid credentials." });
+        await _auth.RequestAdminOtpAsync(dto.Mobile);
+        return Ok(new { message = "If this is an active admin account, a one-time code has been sent to the backend terminal." });
+    }
+
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp([FromBody] AdminOtpVerifyDto dto)
+    {
+        var result = await _auth.VerifyAdminOtpAsync(dto.Mobile, dto.Otp);
+        if (result == null) return BadRequest(new { message = "The code is invalid or expired. Request a new code and try again." });
         return Ok(result);
     }
 }

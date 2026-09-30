@@ -5,7 +5,8 @@ namespace HutatmaBooking.API.Services.Interfaces;
 
 public interface IAuthService
 {
-    Task<LoginResponseDto?> LoginAsync(LoginRequestDto dto);
+    Task RequestAdminOtpAsync(string email);
+    Task<LoginResponseDto?> VerifyAdminOtpAsync(string email, string otp);
 }
 
 public interface IBookingService
@@ -60,6 +61,7 @@ public interface IReceiptService
 public interface INotificationService
 {
     Task SendBookingPaymentNotificationAsync(Booking booking, Payment payment, string receiptNumber);
+    Task SendOneTimeCodeAsync(string mobile, string otp, string purpose);
 }
 
 public interface IAuditService

@@ -47,6 +47,15 @@ type RefundBooking = {
   } | null;
 };
 
+type RefundBankDetails = {
+  bankName: string;
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  branchName: string;
+  micrCode?: string | null;
+};
+
 const currency = (amount?: number | null) => amount == null
   ? 'To be determined'
   : `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
@@ -65,6 +74,9 @@ const RefundApplicationPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [applyingId, setApplyingId] = useState<number | null>(null);
+  const [otpBookingId, setOtpBookingId] = useState<number | null>(null);
+  const [otp, setOtp] = useState('');
+  const [verifiedBankDetails, setVerifiedBankDetails] = useState<{ bookingId: number; details: RefundBankDetails } | null>(null);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
 
@@ -80,6 +92,9 @@ const RefundApplicationPage: React.FC = () => {
     setError('');
     setResults([]);
     setSelectedId(null);
+    setOtpBookingId(null);
+    setOtp('');
+    setVerifiedBankDetails(null);
     try {
       const response = await refundAPI.lookup(searchType === 'number'
         ? { bookingNumber: search.trim() }
@@ -98,8 +113,30 @@ const RefundApplicationPage: React.FC = () => {
     setApplyingId(booking.bookingId);
     setError('');
     try {
-      const response = await refundAPI.apply({ bookingId: booking.bookingId, mobile: booking.contactNumber });
+      const response = await refundAPI.requestOtp(booking.bookingId, booking.contactNumber);
+      setOtpBookingId(booking.bookingId);
+      setOtp('');
+      toast.info(response.data.message || 'A verification code was sent to the registered mobile number.');
+    } catch (requestError: any) {
+      setError(requestError.response?.data?.error || 'The verification code could not be sent. Please try again.');
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
+  const handleVerifyAndApply = async (booking: RefundBooking) => {
+    if (!/^\d{6}$/.test(otp)) {
+      setError('Enter the six-digit verification code sent to the registered mobile number.');
+      return;
+    }
+    setApplyingId(booking.bookingId);
+    setError('');
+    try {
+      const response = await refundAPI.applyVerified(booking.bookingId, booking.contactNumber, otp);
       const created = response.data;
+      setVerifiedBankDetails(created.bankDetails ? { bookingId: booking.bookingId, details: created.bankDetails } : null);
+      setOtpBookingId(null);
+      setOtp('');
       setResults((current) => current.map((item) => item.bookingId === booking.bookingId
         ? {
             ...item,
@@ -114,7 +151,7 @@ const RefundApplicationPage: React.FC = () => {
         : item));
       toast.success(`Refund request ${created.refundRequestNumber} submitted for ${created.bookingNumber}.`);
     } catch (requestError: any) {
-      setError(requestError.response?.data?.error || 'The refund request could not be submitted. Please try again.');
+      setError(requestError.response?.data?.error || 'The verification code is invalid or expired. Please try again.');
     } finally {
       setApplyingId(null);
     }
@@ -239,6 +276,41 @@ const RefundApplicationPage: React.FC = () => {
                 <Alert severity="warning" sx={{ mt: 2 }}>{selected.eligibilityMessage}</Alert>
               )}
 
+              {verifiedBankDetails?.bookingId === selected.bookingId && (
+                <Paper variant="outlined" sx={{ mt: 2, p: 2, borderRadius: 1.5, bgcolor: '#f8fafc' }}>
+                  <Typography variant="subtitle2" fontWeight={700} color="primary.main" sx={{ mb: 1 }}>
+                    Bank Details for Refund
+                  </Typography>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={12} sm={6}><Detail label="Account Holder" value={verifiedBankDetails.details.accountHolderName} /></Grid>
+                    <Grid item xs={12} sm={6}><Detail label="Bank Name" value={verifiedBankDetails.details.bankName} /></Grid>
+                    <Grid item xs={12} sm={6}><Detail label="Account Number" value={verifiedBankDetails.details.accountNumber} /></Grid>
+                    <Grid item xs={12} sm={6}><Detail label="IFSC Code" value={verifiedBankDetails.details.ifscCode} /></Grid>
+                    <Grid item xs={12} sm={6}><Detail label="Branch" value={verifiedBankDetails.details.branchName} /></Grid>
+                    {verifiedBankDetails.details.micrCode && <Grid item xs={12} sm={6}><Detail label="MICR Code" value={verifiedBankDetails.details.micrCode} /></Grid>}
+                  </Grid>
+                </Paper>
+              )}
+
+              {otpBookingId === selected.bookingId ? (
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start', mt: 2 }}>
+                  <TextField
+                    size="small"
+                    label="Six-digit verification code"
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputProps={{ inputMode: 'numeric', autoComplete: 'one-time-code', maxLength: 6 }}
+                    helperText={`Sent to registered mobile ending ${selected.contactNumber.slice(-4)}`}
+                    sx={{ flex: '1 1 230px' }}
+                  />
+                  <Button variant="contained" onClick={() => handleVerifyAndApply(selected)} disabled={applyingId === selected.bookingId || !/^[0-9]{6}$/.test(otp)}>
+                    {applyingId === selected.bookingId ? <CircularProgress size={18} color="inherit" /> : 'Verify & Apply'}
+                  </Button>
+                  <Button variant="text" onClick={() => { setOtpBookingId(null); setOtp(''); setError(''); }} disabled={applyingId === selected.bookingId}>
+                    Cancel
+                  </Button>
+                </Box>
+              ) : (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', mt: 2 }}>
                 {selected.refundRequest && (
                   <Button
@@ -258,6 +330,7 @@ const RefundApplicationPage: React.FC = () => {
                   {applyingId === selected.bookingId ? <CircularProgress size={18} color="inherit" /> : 'Apply for Refund'}
                 </Button>
               </Box>
+              )}
             </Box>
           </Paper>
         )}
