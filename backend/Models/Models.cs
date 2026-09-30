@@ -294,6 +294,25 @@ public class Cancellation
     [ForeignKey("BookingId")] public Booking Booking { get; set; } = null!;
 }
 
+public class RefundRequest
+{
+    public int Id { get; set; }
+    [MaxLength(40)] public string RefundRequestNumber { get; set; } = "";
+    public int BookingId { get; set; }
+    public decimal? RefundAmount { get; set; }
+    [MaxLength(30)] public string Status { get; set; } = "Requested";
+    [MaxLength(500)] public string? RejectionReason { get; set; }
+    public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+    public int? VerifiedBy { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+    public int? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public int? ProcessedBy { get; set; }
+    public DateTime? ProcessedAt { get; set; }
+    [ForeignKey("BookingId")] public Booking Booking { get; set; } = null!;
+}
+
 public class AuditLog
 {
     public int Id { get; set; }

@@ -10,6 +10,7 @@ import {
   CurrencyRupee, Event, PhotoLibrary, Notifications, People,
   Report, Cancel, Print, ExpandLess, ExpandMore, Logout,
   AccountCircle, Settings, ChevronLeft,
+  AssignmentReturn,
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
@@ -41,6 +42,7 @@ const navSections = [
     items: [
       { label: 'Complaints',  icon: <Report />,              path: '/admin/complaints'  },
       { label: 'Cancellations', icon: <Cancel />,            path: '/admin/cancellations' },
+      { label: 'Refund Requests', icon: <AssignmentReturn />, path: '/admin/refunds' },
       { label: 'Users',       icon: <People />,              path: '/admin/users'       },
       { label: 'Print Receipt', icon: <Print />,             path: '/admin/receipts'    },
     ],

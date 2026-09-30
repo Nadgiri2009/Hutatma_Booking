@@ -16,6 +16,8 @@ const navItems = [
   { label: 'About Venue',          path: '/about'          },
   { label: 'Gallery',              path: '/gallery'        },
   { label: 'Contact Us',           path: '/contact'        },
+  { label: 'Apply Refund',         path: '/refunds'        },
+  { label: 'Track Refund',         path: '/track-refund'   },
   { label: 'Print Booking Details',path: '/print-booking'  },
 ];
 

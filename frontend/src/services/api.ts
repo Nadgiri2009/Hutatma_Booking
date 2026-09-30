@@ -47,6 +47,19 @@ export const bookingAPI = {
   getAll:            (params: any)   => api.get('/bookings', { params }),
 };
 
+// ── Refund requests ──────────────────────────────────────────────────────────
+export const refundAPI = {
+  lookup: (params: { bookingNumber?: string; mobile?: string }) => api.get('/refunds/lookup', { params }),
+  track: (params: { refundRequestNumber?: string; bookingNumber?: string; mobile?: string }) => api.get('/refunds/track', { params }),
+  apply: (data: { bookingId: number; mobile: string }) => api.post('/refunds', data),
+  getAll: () => api.get('/refunds'),
+  verify: (id: number) => api.put(`/refunds/${id}/verify`),
+  approve: (id: number, refundAmount: number) => api.put(`/refunds/${id}/approve`, { refundAmount }),
+  reject: (id: number, reason: string) => api.put(`/refunds/${id}/reject`, { reason }),
+  startProcessing: (id: number) => api.put(`/refunds/${id}/start-processing`),
+  process: (id: number) => api.put(`/refunds/${id}/process`),
+};
+
 // ── Venues ────────────────────────────────────────────────────────────────────
 export const venueAPI = {
   getAll:       ()              => api.get('/venues'),

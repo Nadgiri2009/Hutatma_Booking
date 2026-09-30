@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<Notice>       Notices       => Set<Notice>();
     public DbSet<Complaint>    Complaints    => Set<Complaint>();
     public DbSet<Cancellation> Cancellations => Set<Cancellation>();
+    public DbSet<RefundRequest> RefundRequests => Set<RefundRequest>();
     public DbSet<AuditLog>     AuditLogs     => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder mb)
@@ -88,10 +89,18 @@ public class AppDbContext : DbContext
         mb.Entity<Booking>()
             .HasIndex(b => new { b.VenueId, b.FromDate, b.ToDate, b.Session });
 
+        mb.Entity<RefundRequest>()
+            .HasIndex(r => r.BookingId)
+            .IsUnique();
+
+        mb.Entity<RefundRequest>()
+            .HasIndex(r => r.RefundRequestNumber)
+            .IsUnique();
+
         mb.Entity<Role>().HasData(
-            new Role { Id = 1, Name = "Admin",  Description = "System Administrator" },
-            new Role { Id = 2, Name = "Staff",  Description = "Office Staff" },
-            new Role { Id = 3, Name = "User",   Description = "Public User" }
+            new Role { Id = 1, Name = "Admin", Description = "System Administrator", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5981) },
+            new Role { Id = 2, Name = "Staff", Description = "Office Staff", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5990) },
+            new Role { Id = 3, Name = "User", Description = "Public User", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5992) }
         );
 
         // Seed default admin user (password: Admin@123)

@@ -11,6 +11,8 @@ import PublicNavbar from './components/layout/PublicNavbar';
 import AdminLayout  from './components/layout/AdminLayout';
 import HomePage    from './pages/public/HomePage';
 import BookingPage from './pages/public/BookingPage';
+import RefundApplicationPage from './pages/public/RefundApplicationPage';
+import TrackRefundPage from './pages/public/TrackRefundPage';
 import { AboutVenuePage, ContactPage, GalleryPage, PrintBookingPage } from './pages/public/PublicPages';
 import AdminLoginPage    from './pages/admin/AdminLoginPage';
 import AdminDashboard    from './pages/admin/AdminDashboard';
@@ -22,6 +24,7 @@ import AdminHolidaysPage from './pages/admin/AdminHolidaysPage';
 import { AdminGalleryPage, AdminNoticesPage }           from './pages/admin/AdminGalleryNoticesPage';
 import { AdminComplaintsPage, AdminCancellationsPage }  from './pages/admin/AdminComplaintsCancellationsPage';
 import AdminReceiptsPage from './pages/admin/AdminReceiptsPage';
+import AdminRefundRequestsPage from './pages/admin/AdminRefundRequestsPage';
 
 const PublicLayout: React.FC = () => (<><PublicNavbar /><Outlet /></>);
 
@@ -39,6 +42,8 @@ const AppRoutes: React.FC = () => (
       <Route path="/gallery"       element={<GalleryPage />} />
       <Route path="/contact"       element={<ContactPage />} />
       <Route path="/print-booking" element={<PrintBookingPage />} />
+      <Route path="/refunds"       element={<RefundApplicationPage />} />
+      <Route path="/track-refund" element={<TrackRefundPage />} />
       <Route path="/book"          element={<BookingPage />} />
     </Route>
     <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -53,6 +58,7 @@ const AppRoutes: React.FC = () => (
       <Route path="notices"      element={<AdminNoticesPage />} />
       <Route path="complaints"   element={<AdminComplaintsPage />} />
       <Route path="cancellations" element={<AdminCancellationsPage />} />
+      <Route path="refunds"      element={<AdminRefundRequestsPage />} />
       <Route path="users"        element={<AdminUsersPage />} />
       <Route path="receipts"     element={<AdminReceiptsPage />} />
     </Route>

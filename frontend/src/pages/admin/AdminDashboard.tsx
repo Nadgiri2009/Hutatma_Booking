@@ -6,10 +6,10 @@ import {
 } from '@mui/material';
 import {
   ConfirmationNumber, HourglassEmpty, CheckCircle,
-  AttachMoney, Report, TrendingUp, Visibility,
+  AttachMoney, Report, TrendingUp, Visibility, AssignmentReturn,
   Print, Refresh,
 } from '@mui/icons-material';
-import { dashboardAPI, bookingAPI } from '../../services/api';
+import { dashboardAPI, refundAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,10 +25,16 @@ const paymentColor: Record<string, 'warning' | 'success' | 'error'> = {
   Failed:  'error',
 };
 
-interface StatCard { label: string; value: string | number; icon: React.ReactNode; color: string; bg: string; }
+interface StatCard { label: string; value: string | number; icon: React.ReactNode; color: string; bg: string; onClick?: () => void; }
 
-const StatCard: React.FC<StatCard> = ({ label, value, icon, color, bg }) => (
-  <Card sx={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
+const StatCard: React.FC<StatCard> = ({ label, value, icon, color, bg, onClick }) => (
+  <Card
+    onClick={onClick}
+    onKeyDown={onClick ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick(); } } : undefined}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    sx={{ height: '100%', position: 'relative', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default', '&:focus-visible': { outline: '2px solid #1a3a6b', outlineOffset: 2 } }}
+  >
     <CardContent sx={{ p: 2.5 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box>
@@ -52,6 +58,7 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData]       = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refundCount, setRefundCount] = useState(0);
 
   const load = () => {
     setLoading(true);
@@ -59,6 +66,9 @@ const AdminDashboard: React.FC = () => {
       .then((r) => setData(r.data))
       .catch(() => toast.error('Failed to load dashboard'))
       .finally(() => setLoading(false));
+    refundAPI.getAll()
+      .then((r) => setRefundCount((r.data || []).length))
+      .catch(() => toast.error('Failed to load refund request count'));
   };
 
   useEffect(() => { load(); }, []);
@@ -71,11 +81,12 @@ const AdminDashboard: React.FC = () => {
     </Box>
   );
 
-  const stats: StatCard[] = [
+  const stats: Array<StatCard & { path?: string }> = [
     { label: 'Total Bookings',    value: data?.totalBookings          || 0, icon: <ConfirmationNumber />, color: '#1a3a6b', bg: 'rgba(26,58,107,0.12)'  },
     { label: 'Pending Payment',  value: data?.pendingPaymentBookings || 0, icon: <HourglassEmpty />,    color: '#ed6c02', bg: 'rgba(237,108,2,0.12)'   },
     { label: 'Confirmed',         value: data?.confirmedBookings      || 0, icon: <CheckCircle />,       color: '#2e7d32', bg: 'rgba(46,125,50,0.12)'   },
     { label: 'Cancelled',         value: data?.cancelledBookings      || 0, icon: <Report />,            color: '#5a6a7e', bg: 'rgba(90,106,126,0.12)'  },
+    { label: 'Refund',            value: refundCount,                    icon: <AssignmentReturn />,  color: '#0288d1', bg: 'rgba(2,136,209,0.12)', path: '/admin/refunds' },
     { label: 'Total Revenue',     value: `₹${(data?.totalRevenue || 0).toLocaleString('en-IN')}`,
                                                                        icon: <AttachMoney />,       color: '#c9a227', bg: 'rgba(201,162,39,0.12)'  },
   ];
@@ -97,9 +108,9 @@ const AdminDashboard: React.FC = () => {
 
       {/* Stat Cards */}
       <Grid container spacing={2.5} mb={4}>
-        {stats.map((s) => (
+        {stats.map(({ path, ...s }) => (
           <Grid item xs={12} sm={6} lg={4} key={s.label}>
-            <StatCard {...s} />
+            <StatCard {...s} onClick={path ? () => navigate(path) : undefined} />
           </Grid>
         ))}
       </Grid>
