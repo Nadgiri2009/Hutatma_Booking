@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import {
   AppBar, Toolbar, Typography, Button, IconButton, Drawer,
   List, ListItem, ListItemText, Box, Container, useMediaQuery,
-  useTheme, Divider, ListItemButton,
+  useTheme, Divider, ListItemButton, Dialog, DialogTitle,
+  DialogContent, DialogActions, ListItemIcon,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const navItems = [
@@ -19,10 +21,15 @@ const navItems = [
 
 const PublicNavbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const theme    = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
+
+  const openTerms = () => setTermsOpen(true);
+  const closeTerms = () => setTermsOpen(false);
+  const acceptTerms = () => { setTermsOpen(false); navigate('/book'); };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -72,7 +79,7 @@ const PublicNavbar: React.FC = () => {
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={() => navigate('/book')}
+                  onClick={openTerms}
                   sx={{ ml: 2, py: 0.8 }}
                 >
                   Book Now
@@ -135,9 +142,7 @@ const PublicNavbar: React.FC = () => {
               fullWidth
               variant="contained"
               color="primary"
-              component={Link}
-              to="/book"
-              onClick={() => setDrawerOpen(false)}
+              onClick={() => { setDrawerOpen(false); openTerms(); }}
             >
               Book Now
             </Button>
@@ -156,6 +161,36 @@ const PublicNavbar: React.FC = () => {
           </ListItem>
         </List>
       </Drawer>
+      <Dialog open={termsOpen} onClose={closeTerms} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>नियम व अटी</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body1" sx={{ mb: 2, color: '#1a3a6b', fontWeight: 700 }}>
+            कृपया खालील नियम आणि अटी वाचा आणि स्वीकारा.
+          </Typography>
+          <List disablePadding>
+            {[
+              'बुकिंग करण्यापूर्वी, वेबसाइटवरील सर्व माहिती पूर्ण व अचूक असल्याची खात्री करा.',
+              'बुकिंग पुष्टीकरणासाठी देयक वेळेत जमा करणे आवश्यक आहे.',
+              'बुकिंग रद्द अथवा बदल करण्यासाठी संस्थेने निर्धारित नियम व शुल्क लागू होतील.',
+              'बुकिंग अधिकृत झाल्यानंतर कोणतीही तांत्रिक किंवा प्रशासकीय मुदत असल्यास तात्काळ कळवा.',
+              'फक्त अधिकृत बँक खात्यावरच देयक करावे; अनधिकृत खात्यांना पैसे देऊ नका.',
+            ].map((text) => (
+              <ListItem key={text} disableGutters>
+                <ListItemIcon sx={{ minWidth: 32, color: '#2e7d32' }}>
+                  <CheckCircleIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary={text} />
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={closeTerms}>Cancel</Button>
+          <Button variant="contained" color="primary" onClick={acceptTerms}>
+            I accept the terms and conditions
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

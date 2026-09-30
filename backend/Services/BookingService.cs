@@ -37,6 +37,13 @@ public class BookingService : IBookingService
         "Morning", "Evening", "FullDay"
     };
 
+    private static int GetSelectedSlotsPerDay(string? session)
+    {
+        if (string.IsNullOrWhiteSpace(session)) return 1;
+
+        return session.Trim().Equals("FullDay", StringComparison.OrdinalIgnoreCase) ? 2 : 1;
+    }
+
     public async Task<AvailabilityResponseDto> CheckAvailabilityAsync(AvailabilityRequestDto req)
     {
         var existingBookings = await _bookingRepo.GetBookingsForDateRangeAsync(
@@ -102,12 +109,14 @@ public class BookingService : IBookingService
         var fromDate = DateOnly.FromDateTime(req.FromDate);
         var toDate   = DateOnly.FromDateTime(req.ToDate);
         var totalDays = (toDate.DayNumber - fromDate.DayNumber) + 1;
+        var selectedSlotsPerDay = GetSelectedSlotsPerDay(req.Session);
+        var totalChargeableSlots = totalDays * selectedSlotsPerDay;
 
         // Count holiday days
         var holidays    = await _holidayRepo.GetHolidaysInRangeAsync(req.FromDate, req.ToDate);
         var holidayDays = holidays.Count;
 
-        var baseRent        = pricing.Amount * totalDays;
+        var baseRent        = pricing.Amount * totalChargeableSlots;
         var holidayCharge   = pricing.HolidaySurchargeAmount * holidayDays;
         var equipmentCharge = 0m;
         if (req.Equipment != null && req.Equipment.Any())

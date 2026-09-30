@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Typography, Button, Grid, Card, CardContent,
-  Chip, Paper, Avatar, Fade,
+  Chip, Paper, Avatar, Fade, Dialog, DialogTitle,
+  DialogContent, DialogActions, List, ListItem, ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   EventAvailable, MeetingRoom,
@@ -73,7 +75,23 @@ const HomePage: React.FC = () => {
   const [notices, setNotices]           = useState<any[]>([]);
   const [venues, setVenues]             = useState<Venue[]>([]);
   const [fade, setFade]                 = useState(true);
+  const [termsOpen, setTermsOpen]       = useState(false);
   const navigate = useNavigate();
+
+  const openTerms = () => setTermsOpen(true);
+  const closeTerms = () => setTermsOpen(false);
+  const acceptTerms = () => { setTermsOpen(false); navigate('/book'); };
+  const handleHeroCtaClick = () => {
+    if (slide.cta === 'Book Now') {
+      openTerms();
+    } else if (slide.cta === 'Check Availability') {
+      navigate('/book');
+    } else if (slide.cta === 'View Gallery') {
+      navigate('/gallery');
+    } else {
+      navigate('/book');
+    }
+  };
 
   useEffect(() => {
     noticeAPI.getActive().then((r) => setNotices(r.data)).catch(() => {});
@@ -145,7 +163,7 @@ const HomePage: React.FC = () => {
                 <Button
                   variant="contained" color="secondary" size="large"
                   endIcon={<ArrowForward />}
-                  onClick={() => navigate('/book')}
+                  onClick={handleHeroCtaClick}
                   sx={{ px: 4, py: 1.5, fontSize: '1rem' }}
                 >
                   {slide.cta}
@@ -315,7 +333,7 @@ const HomePage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button
               variant="contained" color="secondary" size="large"
-              onClick={() => navigate('/book')}
+              onClick={openTerms}
               sx={{ px: 5, py: 1.5, fontSize: '1.1rem' }}
               endIcon={<ArrowForward />}
             >
@@ -331,6 +349,37 @@ const HomePage: React.FC = () => {
           </Box>
         </Container>
       </Box>
+
+      <Dialog open={termsOpen} onClose={closeTerms} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>नियम व अटी</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body1" sx={{ mb: 2, color: '#1a3a6b', fontWeight: 700 }}>
+            कृपया खालील नियम आणि अटी वाचा आणि स्वीकारा.
+          </Typography>
+          <List disablePadding>
+            {[
+              'बुकिंग करण्यापूर्वी, वेबसाइटवरील सर्व माहिती पूर्ण व अचूक असल्याची खात्री करा.',
+              'बुकिंग पुष्टीकरणासाठी देयक वेळेत जमा करणे आवश्यक आहे.',
+              'बुकिंग रद्द अथवा बदल करण्यासाठी संस्थेने निर्धारित नियम व शुल्क लागू होतील.',
+              'बुकिंग अधिकृत झाल्यानंतर कोणतीही तांत्रिक किंवा प्रशासकीय मुदत असल्यास तात्काळ कळवा.',
+              'फक्त अधिकृत बँक खात्यावरच देयक करावे; अनधिकृत खात्यांना पैसे देऊ नका.',
+            ].map((text) => (
+              <ListItem key={text} disableGutters>
+                <ListItemIcon sx={{ minWidth: 32, color: '#2e7d32' }}>
+                  <CheckCircle fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary={text} />
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={closeTerms}>Cancel</Button>
+          <Button variant="contained" color="primary" onClick={acceptTerms}>
+            I accept the terms and conditions
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <Box sx={{ bgcolor: '#0f2340', py: 4 }}>

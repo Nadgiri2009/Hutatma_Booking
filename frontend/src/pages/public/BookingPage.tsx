@@ -354,7 +354,7 @@ const Step2Summary: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ on
         setError(serverMsg || 'Failed to calculate booking summary. Please try again.');
       })
       .finally(() => setLoading(false));
-  }, [wizard.venueId, wizard.venuePricingId, wizard.fromDate, wizard.toDate, wizard.equipment]);
+  }, [wizard.venueId, wizard.venuePricingId, wizard.fromDate, wizard.toDate, wizard.session, wizard.equipment]);
 
   const fmt = (n: number) => `₹${n?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
