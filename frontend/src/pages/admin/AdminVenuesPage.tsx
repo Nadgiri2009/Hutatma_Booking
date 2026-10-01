@@ -223,7 +223,7 @@ const AdminVenuesPage: React.FC = () => {
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
-          {dialogMode === 'venue' ? 'Add Venue & Pricing' : `Edit Pricing — ${editing.priceItemName}`}
+          {dialogMode === 'venue' ? 'Add Venue & Pricing' : `Edit Pricing — ${editing?.priceItemName || 'Pricing Item'}`}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Alert severity="info" sx={{ mb: 2 }}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, IconButton, List,
   ListItem, ListItemButton, ListItemIcon, ListItemText, Avatar,
@@ -51,7 +51,7 @@ const navSections = [
 ];
 
 const AdminLayout: React.FC = () => {
-  const [open, setOpen]         = useState(true);
+  const [open, setOpen]         = useState(() => window.innerWidth >= 900);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const theme    = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -59,6 +59,10 @@ const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const auth     = useSelector((s: RootState) => s.auth);
+
+  useEffect(() => {
+    if (isMobile) setOpen(false);
+  }, [isMobile]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -227,14 +231,15 @@ const AdminLayout: React.FC = () => {
             displayPrint: 'none',
           }}
         >
-          <Toolbar>
-            <IconButton onClick={() => setOpen((v) => !v)} sx={{ mr: 1, color: '#1a3a6b' }}>
+          <Toolbar sx={{ px: { xs: 1.5, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
+            <IconButton aria-label="Toggle navigation" onClick={() => setOpen((v) => !v)} sx={{ mr: { xs: 0.5, sm: 1 }, color: '#1a3a6b', flexShrink: 0 }}>
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ flex: 1 }}>
+            <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ flex: 1, minWidth: 0, fontSize: { xs: '0.82rem', sm: '1rem', md: '1.15rem' }, lineHeight: 1.25 }}>
               Hutatma Smruti Mandir — Admin
             </Typography>
             <IconButton
+              aria-label="Account menu"
               onClick={(e) => setAnchorEl(e.currentTarget)}
               sx={{ color: '#1a3a6b' }}
             >
@@ -259,7 +264,7 @@ const AdminLayout: React.FC = () => {
         </AppBar>
 
         {/* Page content */}
-        <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, overflow: 'auto' }}>
+        <Box sx={{ flex: 1, minWidth: 0, p: { xs: 1.25, sm: 2, md: 3 }, overflow: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

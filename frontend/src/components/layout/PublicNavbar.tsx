@@ -25,7 +25,7 @@ const PublicNavbar: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const theme    = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -39,7 +39,7 @@ const PublicNavbar: React.FC = () => {
     <>
       <AppBar position="sticky" elevation={0} sx={{ displayPrint: 'none' }}>
         <Container maxWidth="xl">
-          <Toolbar sx={{ py: 1, gap: 2 }}>
+          <Toolbar sx={{ py: { xs: 0.75, sm: 1 }, px: { xs: 0, sm: 1 }, gap: { xs: 1, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
             {/* Logo */}
             <Box
               component={Link}
@@ -48,7 +48,7 @@ const PublicNavbar: React.FC = () => {
             >
               <AccountBalanceIcon sx={{ fontSize: 36, color: '#c9a227' }} />
               <Box>
-                <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700, lineHeight: 1.1, fontSize: '1rem' }}>
+                <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700, lineHeight: 1.1, fontSize: { xs: '0.84rem', sm: '1rem' } }}>
                   Hutatma Smruti Mandir
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.7rem' }}>
@@ -112,7 +112,7 @@ const PublicNavbar: React.FC = () => {
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 280 } }}
+        PaperProps={{ sx: { width: 'min(320px, calc(100vw - 24px))' } }}
       >
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1a3a6b' }}>
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>Menu</Typography>

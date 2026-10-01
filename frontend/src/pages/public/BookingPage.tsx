@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Paper, Stepper, Step, StepLabel, Typography,
-  Button, Grid, TextField, MenuItem, Select, FormControl, InputLabel,
+  Button, Grid, TextField, MenuItem, Select, FormControl, InputLabel, LinearProgress,
   FormHelperText, Chip, Alert, CircularProgress, Divider, Card, CardContent,
+  useMediaQuery, useTheme,
 } from '@mui/material';
 import {
   CheckCircle, ArrowBack, ArrowForward, EventAvailable,
@@ -931,15 +932,17 @@ const BookingPage: React.FC = () => {
   const dispatch = useDispatch();
   const wizard   = useSelector((s: RootState) => s.booking);
   const [completed, setCompleted] = useState(false);
+  const theme = useTheme();
+  const compactSteps = useMediaQuery(theme.breakpoints.down('sm'));
 
   const step    = wizard.step;
   const onNext  = () => dispatch(nextStep());
   const onPrev  = () => dispatch(prevStep());
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: { xs: 2, sm: 3, md: 4 } }}>
       <Container maxWidth="lg">
-        <Box textAlign="center" mb={4}>
+        <Box textAlign="center" mb={{ xs: 2.5, sm: 4 }}>
           <Typography variant="h4" sx={{ color: '#1a3a6b', fontWeight: 700 }}>
             Book Your Venue
           </Typography>
@@ -949,14 +952,24 @@ const BookingPage: React.FC = () => {
         </Box>
 
         {!completed && (
-          <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-            <Stepper activeStep={step} alternativeLabel>
-              {steps.map((s, i) => (
-                <Step key={s.label} completed={i < step}>
-                  <StepLabel>{s.label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2.5, sm: 4 }, borderRadius: 2 }}>
+            {compactSteps ? (
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {steps[step]?.icon}
+                  <Typography variant="subtitle2" fontWeight={700}>{`Step ${step + 1} of ${steps.length}: ${steps[step]?.label}`}</Typography>
+                </Box>
+                <LinearProgress variant="determinate" value={((step + 1) / steps.length) * 100} />
+              </Box>
+            ) : (
+              <Stepper activeStep={step} alternativeLabel>
+                {steps.map((s, i) => (
+                  <Step key={s.label} completed={i < step}>
+                    <StepLabel>{s.label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            )}
           </Paper>
         )}
 
