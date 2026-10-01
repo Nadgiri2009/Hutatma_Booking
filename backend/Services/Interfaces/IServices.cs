@@ -72,6 +72,8 @@ public interface IAuditService
 // Additional DTOs needed by services
 public class VenuePricingUpdateDto
 {
+    public string? PriceItemName          { get; set; }
+    public string? ChargeUnit             { get; set; }
     public decimal Amount                 { get; set; }
     public decimal RefundableDeposit      { get; set; }
     public decimal HolidaySurchargeAmount { get; set; }

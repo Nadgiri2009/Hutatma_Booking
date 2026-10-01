@@ -25,6 +25,7 @@ import { AdminGalleryPage, AdminNoticesPage }           from './pages/admin/Admi
 import { AdminComplaintsPage, AdminCancellationsPage }  from './pages/admin/AdminComplaintsCancellationsPage';
 import AdminReceiptsPage from './pages/admin/AdminReceiptsPage';
 import AdminRefundRequestsPage from './pages/admin/AdminRefundRequestsPage';
+import AdminAuditPage from './pages/admin/AdminAuditPage';
 
 const PublicLayout: React.FC = () => (<><PublicNavbar /><Outlet /></>);
 
@@ -61,6 +62,7 @@ const AppRoutes: React.FC = () => (
       <Route path="refunds"      element={<AdminRefundRequestsPage />} />
       <Route path="users"        element={<AdminUsersPage />} />
       <Route path="receipts"     element={<AdminReceiptsPage />} />
+      <Route path="audit"        element={<AdminAuditPage />} />
     </Route>
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>

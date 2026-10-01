@@ -70,7 +70,16 @@ export const venueAPI = {
   // Admin: pricing & status management (replaces premiseAPI/rateAPI)
   getAllForAdmin: ()                          => api.get('/venues/admin/all'),
   updatePricing:  (id: number, data: any)     => api.put(`/venues/pricing/${id}`, data),
+  createVenue:    (data: any)                 => api.post('/venues/admin', data),
+  createPricing:  (venueId: number, data: any) => api.post(`/venues/${venueId}/pricing`, data),
+  removeVenue:    (id: number)                => api.delete(`/venues/${id}`),
+  removePricing:  (id: number)                => api.delete(`/venues/pricing/${id}`),
   updateStatus:   (id: number, data: any)     => api.put(`/venues/${id}/status`, data),
+};
+
+// ── Audit report ──────────────────────────────────────────────────────────────
+export const auditAPI = {
+  get: (params: any) => api.get('/audit-logs', { params }),
 };
 
 // ── Holidays ──────────────────────────────────────────────────────────────────

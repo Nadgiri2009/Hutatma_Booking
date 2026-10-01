@@ -100,7 +100,7 @@ public class BookingService : IBookingService
     {
         _logger?.LogInformation("CalculateSummary: VenueId={VenueId}, VenuePricingId={VenuePricingId}, FromDate={FromDate}, ToDate={ToDate}", req.VenueId, req.VenuePricingId, req.FromDate, req.ToDate);
         var pricing = await _bookingRepo.GetVenuePricingAsync(req.VenuePricingId);
-        if (pricing == null || pricing.VenueId != req.VenueId || !pricing.IsActive)
+        if (pricing == null || pricing.VenueId != req.VenueId || !pricing.IsActive || pricing.Venue?.Status != "Active")
         {
             _logger?.LogWarning("No active pricing found for VenueId={VenueId}, VenuePricingId={VenuePricingId}", req.VenueId, req.VenuePricingId);
             throw new InvalidOperationException("No rate configured for the selected venue and price item.");

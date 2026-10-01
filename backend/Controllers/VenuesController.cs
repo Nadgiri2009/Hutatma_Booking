@@ -4,6 +4,7 @@ using HutatmaBooking.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace HutatmaBooking.API.Controllers;
 
@@ -12,8 +13,13 @@ namespace HutatmaBooking.API.Controllers;
 public class VenuesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IAuditService _audit;
 
-    public VenuesController(AppDbContext db) => _db = db;
+    public VenuesController(AppDbContext db, IAuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -137,6 +143,7 @@ public class VenuesController : ControllerBase
                         HolidaySurchargeAmount = p.HolidaySurchargeAmount,
                         CGSTPercent = p.CGSTPercent,
                         SGSTPercent = p.SGSTPercent,
+                        IsActive = p.IsActive,
                         EffectiveFrom = p.EffectiveFrom,
                         EffectiveTo = p.EffectiveTo
                     })
@@ -215,6 +222,7 @@ public class VenuesController : ControllerBase
     {
         var pricing = await _db.VenuePricing.FindAsync(id);
         if (pricing == null) return NotFound();
+        var oldValues = JsonSerializer.Serialize(pricing);
 
         pricing.Amount = dto.Amount;
         pricing.RefundableDeposit = dto.RefundableDeposit;
@@ -222,8 +230,11 @@ public class VenuesController : ControllerBase
         pricing.CGSTPercent = dto.CGSTPercent;
         pricing.SGSTPercent = dto.SGSTPercent;
         pricing.IsActive = dto.IsActive;
+        if (!string.IsNullOrWhiteSpace(dto.PriceItemName)) pricing.PriceItemName = dto.PriceItemName;
+        if (!string.IsNullOrWhiteSpace(dto.ChargeUnit)) pricing.ChargeUnit = dto.ChargeUnit;
 
         await _db.SaveChangesAsync();
+        await _audit.LogAsync("Updated", "VenuePricing", pricing.Id, oldValues, JsonSerializer.Serialize(pricing));
         return Ok(new VenuePricingDto
         {
             Id = pricing.Id,
@@ -234,21 +245,145 @@ public class VenuesController : ControllerBase
             HolidaySurchargeAmount = pricing.HolidaySurchargeAmount,
             CGSTPercent = pricing.CGSTPercent,
             SGSTPercent = pricing.SGSTPercent,
+            IsActive = pricing.IsActive,
             EffectiveFrom = pricing.EffectiveFrom,
             EffectiveTo = pricing.EffectiveTo
         });
     }
 
     [Authorize(Policy = "AdminOnly")]
+    [HttpPost("admin")]
+    public async Task<IActionResult> CreateVenue([FromBody] VenueCreateDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.VenueName)) return BadRequest("Venue name is required.");
+        var rate = dto.InitialPricing;
+        if (string.IsNullOrWhiteSpace(rate.PriceItemName) || string.IsNullOrWhiteSpace(rate.ChargeUnit))
+            return BadRequest("Initial price item name and charge unit are required.");
+        if (rate.Amount < 0 || rate.RefundableDeposit < 0 || rate.HolidaySurchargeAmount < 0 || rate.CGSTPercent < 0 || rate.SGSTPercent < 0)
+            return BadRequest("Pricing values cannot be negative.");
+        if (await _db.VenueMaster.AnyAsync(v => v.VenueName == dto.VenueName.Trim()))
+            return Conflict("A venue with this name already exists.");
+
+        var venue = new Models.VenueMaster
+        {
+            VenueName = dto.VenueName.Trim(),
+            Description = dto.Description?.Trim(),
+            Capacity = dto.Capacity,
+            Location = dto.Location?.Trim(),
+            Status = "Active",
+            DisplayOrder = (await _db.VenueMaster.MaxAsync(v => (int?)v.DisplayOrder) ?? 0) + 1
+        };
+        venue.Pricing.Add(new Models.VenuePricing
+        {
+            PriceItemName = rate.PriceItemName.Trim(),
+            ChargeUnit = rate.ChargeUnit.Trim(),
+            Amount = rate.Amount,
+            RefundableDeposit = rate.RefundableDeposit,
+            HolidaySurchargeAmount = rate.HolidaySurchargeAmount,
+            CGSTPercent = rate.CGSTPercent,
+            SGSTPercent = rate.SGSTPercent,
+            EffectiveFrom = rate.EffectiveFrom ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            EffectiveTo = rate.EffectiveTo,
+            DisplayOrder = 1,
+            IsActive = true
+        });
+        _db.VenueMaster.Add(venue);
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("Created", "VenueMaster", venue.VenueId, null, JsonSerializer.Serialize(venue));
+        var initialPricing = venue.Pricing.Single();
+        await _audit.LogAsync("Created", "VenuePricing", initialPricing.Id, null, JsonSerializer.Serialize(initialPricing));
+        return CreatedAtAction(nameof(GetById), new { id = venue.VenueId }, new { venue.VenueId, venue.VenueName, venue.Status, PricingId = initialPricing.Id });
+    }
+
+    [Authorize(Policy = "AdminOnly")]
+    [HttpPost("{venueId:int}/pricing")]
+    public async Task<IActionResult> CreatePricing(int venueId, [FromBody] VenuePricingCreateDto dto)
+    {
+        var venue = await _db.VenueMaster.FindAsync(venueId);
+        if (venue == null || venue.Status == "Removed") return NotFound("Venue not found.");
+        if (string.IsNullOrWhiteSpace(dto.PriceItemName) || string.IsNullOrWhiteSpace(dto.ChargeUnit))
+            return BadRequest("Price item name and charge unit are required.");
+        if (dto.Amount < 0 || dto.RefundableDeposit < 0 || dto.HolidaySurchargeAmount < 0 || dto.CGSTPercent < 0 || dto.SGSTPercent < 0)
+            return BadRequest("Pricing values cannot be negative.");
+
+        var pricing = new Models.VenuePricing
+        {
+            VenueId = venueId,
+            PriceItemName = dto.PriceItemName.Trim(),
+            ChargeUnit = dto.ChargeUnit.Trim(),
+            Amount = dto.Amount,
+            RefundableDeposit = dto.RefundableDeposit,
+            HolidaySurchargeAmount = dto.HolidaySurchargeAmount,
+            CGSTPercent = dto.CGSTPercent,
+            SGSTPercent = dto.SGSTPercent,
+            EffectiveFrom = dto.EffectiveFrom ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            EffectiveTo = dto.EffectiveTo,
+            DisplayOrder = (await _db.VenuePricing.Where(p => p.VenueId == venueId).MaxAsync(p => (int?)p.DisplayOrder) ?? 0) + 1,
+            IsActive = true
+        };
+        _db.VenuePricing.Add(pricing);
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("Created", "VenuePricing", pricing.Id, null, JsonSerializer.Serialize(pricing));
+        return Ok(new VenuePricingDto
+        {
+            Id = pricing.Id,
+            PriceItemName = pricing.PriceItemName,
+            ChargeUnit = pricing.ChargeUnit,
+            Amount = pricing.Amount,
+            RefundableDeposit = pricing.RefundableDeposit,
+            HolidaySurchargeAmount = pricing.HolidaySurchargeAmount,
+            CGSTPercent = pricing.CGSTPercent,
+            SGSTPercent = pricing.SGSTPercent,
+            IsActive = pricing.IsActive,
+            EffectiveFrom = pricing.EffectiveFrom,
+            EffectiveTo = pricing.EffectiveTo
+        });
+    }
+
+    [Authorize(Policy = "AdminOnly")]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> RemoveVenue(int id)
+    {
+        var venue = await _db.VenueMaster.Include(v => v.Pricing).FirstOrDefaultAsync(v => v.VenueId == id);
+        if (venue == null) return NotFound();
+        if (venue.Status == "Removed") return NoContent();
+
+        var oldStatus = venue.Status;
+        venue.Status = "Removed";
+        venue.UpdatedAt = DateTime.UtcNow;
+        foreach (var pricing in venue.Pricing) pricing.IsActive = false;
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("Removed", "VenueMaster", venue.VenueId, oldStatus, "Removed; associated pricing deactivated");
+        return NoContent();
+    }
+
+    [Authorize(Policy = "AdminOnly")]
+    [HttpDelete("pricing/{id:int}")]
+    public async Task<IActionResult> RemovePricing(int id)
+    {
+        var pricing = await _db.VenuePricing.FindAsync(id);
+        if (pricing == null) return NotFound();
+        if (!pricing.IsActive) return NoContent();
+
+        pricing.IsActive = false;
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("Removed", "VenuePricing", pricing.Id, "Active", "Inactive");
+        return NoContent();
+    }
+
+    [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id:int}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] VenueStatusUpdateDto dto)
     {
+        if (dto.Status != "Active" && dto.Status != "Closed") return BadRequest("Status must be Active or Closed.");
         var venue = await _db.VenueMaster.FindAsync(id);
         if (venue == null) return NotFound();
 
+        var oldStatus = venue.Status;
         venue.Status = dto.Status;
         venue.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await _audit.LogAsync("StatusChanged", "VenueMaster", venue.VenueId, oldStatus, venue.Status);
         return Ok(new { venue.VenueId, venue.Status });
     }
 }
@@ -314,6 +449,29 @@ public class VenuePricingDto
     public decimal HolidaySurchargeAmount { get; set; }
     public decimal CGSTPercent { get; set; }
     public decimal SGSTPercent { get; set; }
+    public bool IsActive { get; set; } = true;
     public DateOnly EffectiveFrom { get; set; }
+    public DateOnly? EffectiveTo { get; set; }
+}
+
+public class VenueCreateDto
+{
+    public string VenueName { get; set; } = "";
+    public string? Description { get; set; }
+    public int? Capacity { get; set; }
+    public string? Location { get; set; }
+    public VenuePricingCreateDto InitialPricing { get; set; } = new();
+}
+
+public class VenuePricingCreateDto
+{
+    public string PriceItemName { get; set; } = "";
+    public string ChargeUnit { get; set; } = "";
+    public decimal Amount { get; set; }
+    public decimal RefundableDeposit { get; set; }
+    public decimal HolidaySurchargeAmount { get; set; }
+    public decimal CGSTPercent { get; set; }
+    public decimal SGSTPercent { get; set; }
+    public DateOnly? EffectiveFrom { get; set; }
     public DateOnly? EffectiveTo { get; set; }
 }

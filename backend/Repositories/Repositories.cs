@@ -59,7 +59,7 @@ public class BookingRepository : IBookingRepository
     }
 
     public async Task<VenuePricing?> GetVenuePricingAsync(int venuePricingId) =>
-        await _db.VenuePricing.FirstOrDefaultAsync(p => p.Id == venuePricingId);
+        await _db.VenuePricing.Include(p => p.Venue).FirstOrDefaultAsync(p => p.Id == venuePricingId);
 
     public async Task<List<VenueEquipment>> GetEquipmentByIdsAsync(List<int> ids)
     {
