@@ -113,7 +113,7 @@ const AdminPaymentsPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label="Pending Payment"
+                      label="Payment Pending"
                       color="warning"
                       size="small"
                       sx={{ fontSize: '0.72rem' }}

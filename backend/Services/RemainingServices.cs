@@ -190,7 +190,7 @@ public class PaymentService : IPaymentService
 
         var payments = await _payRepo.GetByBookingAsync(booking.Id);
         var payment = payments.FirstOrDefault(p => p.Status == "Pending")
-            ?? throw new InvalidOperationException("No pending payment found for the created booking.");
+            ?? throw new InvalidOperationException("No Payment Pending found for the created booking.");
 
         payment.TransactionRef = dto.TransactionRef;
         if (!string.IsNullOrEmpty(dto.GatewayOrderId)) payment.GatewayOrderId = dto.GatewayOrderId;

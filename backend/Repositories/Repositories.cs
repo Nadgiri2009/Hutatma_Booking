@@ -122,7 +122,7 @@ public class BookingRepository : IBookingRepository
                     }
                 }
 
-                // Create initial pending payment
+                // Create initial Payment Pending
                 _db.Payments.Add(new Payment
                 {
                     BookingId = booking.Id,

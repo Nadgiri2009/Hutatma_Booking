@@ -83,7 +83,7 @@ const AdminDashboard: React.FC = () => {
 
   const stats: Array<StatCard & { path?: string }> = [
     { label: 'Total Bookings',    value: data?.totalBookings          || 0, icon: <ConfirmationNumber />, color: '#1a3a6b', bg: 'rgba(26,58,107,0.12)'  },
-    { label: 'Pending Payment',  value: data?.pendingPaymentBookings || 0, icon: <HourglassEmpty />,    color: '#ed6c02', bg: 'rgba(237,108,2,0.12)'   },
+    { label: 'Payment Pending',  value: data?.pendingPaymentBookings || 0, icon: <HourglassEmpty />,    color: '#ed6c02', bg: 'rgba(237,108,2,0.12)'   },
     { label: 'Confirmed',         value: data?.confirmedBookings      || 0, icon: <CheckCircle />,       color: '#2e7d32', bg: 'rgba(46,125,50,0.12)'   },
     { label: 'Cancelled',         value: data?.cancelledBookings      || 0, icon: <Report />,            color: '#5a6a7e', bg: 'rgba(90,106,126,0.12)'  },
     { label: 'Refund',            value: refundCount,                    icon: <AssignmentReturn />,  color: '#0288d1', bg: 'rgba(2,136,209,0.12)', path: '/admin/refunds' },

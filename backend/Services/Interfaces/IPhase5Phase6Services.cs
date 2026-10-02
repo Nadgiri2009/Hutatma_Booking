@@ -105,7 +105,7 @@ namespace HutatmaBooking.Services.Interfaces
         Task<ModificationHistoryResponseDto> GetModificationHistoryAsync(int bookingId);
         
         /// <summary>
-        /// Get pending payments for modifications
+        /// Get Payment Pendings for modifications
         /// </summary>
         Task<List<ModificationHistoryEntryDto>> GetPendingPaymentsAsync(int? bookingId = null);
         

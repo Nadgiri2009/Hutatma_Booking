@@ -88,7 +88,7 @@ const AdminBookingsPage: React.FC = () => {
               <InputLabel>Status</InputLabel>
               <Select value={statusFilter} label="Status" onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
                 <MenuItem value="">All Status</MenuItem>
-                <MenuItem value="PendingPayment">Pending Payment</MenuItem>
+                <MenuItem value="PendingPayment">Payment Pending</MenuItem>
                 <MenuItem value="Confirmed">Confirmed</MenuItem>
                 <MenuItem value="Cancelled">Cancelled</MenuItem>
               </Select>

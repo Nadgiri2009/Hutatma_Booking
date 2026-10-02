@@ -96,7 +96,7 @@ export const PrintBookingPage: React.FC = () => {
             )}
             {b.status === 'PendingPayment' && (
               <Alert severity="warning" sx={{ mt: 2, maxWidth: 800, mx: 'auto', displayPrint: 'none' }}>
-                Your booking is pending payment. There is no admin approval step — your booking will be confirmed
+                Your booking is Payment Pending. There is no admin approval step — your booking will be confirmed
                 automatically as soon as your payment is verified.
               </Alert>
             )}
