@@ -3,11 +3,12 @@ import {
   Box, Container, Paper, Stepper, Step, StepLabel, Typography,
   Button, Grid, TextField, MenuItem, Select, FormControl, InputLabel, LinearProgress,
   FormHelperText, Chip, Alert, CircularProgress, Divider, Card, CardContent,
-  useMediaQuery, useTheme,
+  useMediaQuery, useTheme, IconButton, Checkbox, FormControlLabel, ButtonBase,
 } from '@mui/material';
 import {
   CheckCircle, ArrowBack, ArrowForward, EventAvailable,
   Assignment, AccountBalance, Payment, ConfirmationNumber,
+  ChevronLeft, ChevronRight,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -30,6 +31,13 @@ const steps = [
   { label: 'Bank Details',      icon: <AccountBalance /> },
   { label: 'Confirm & Submit',  icon: <Payment />        },
 ];
+
+const formatDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 const step1Schema = yup.object({
@@ -68,8 +76,15 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   const wizard      = useSelector((s: RootState) => s.booking);
   const [venues, setVenues]         = useState<any[]>([]);
   const [pricingOptions, setPricingOptions] = useState<any[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = useState<VenueEquipment[]>([]);
   const [slots, setSlots]           = useState<any[]>([]);
   const [checking, setChecking]     = useState(false);
+  const [validatingAvailability, setValidatingAvailability] = useState(false);
+  const [activeDate, setActiveDate] = useState(wizard.fromDate || '');
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const initialDate = wizard.fromDate ? new Date(`${wizard.fromDate}T00:00:00`) : new Date();
+    return new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
+  });
 
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(step1Schema),
@@ -90,8 +105,45 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   const session    = watch('session');
 
   useEffect(() => {
-    venueAPI.getAll().then((r) => setVenues(r.data)).catch(() => {});
+    venueAPI.getAll().then((r) => {
+      setVenues(r.data || []);
+    }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (venueId) return;
+    const firstActiveVenue = venues.find((venue: any) => venue.status === 'Active');
+    if (firstActiveVenue) setValue('venueId', firstActiveVenue.venueId);
+  }, [venueId, venues, setValue]);
+
+  useEffect(() => {
+    venueAPI.getEquipment().then((r) => setEquipmentOptions(r.data || [])).catch(() => setEquipmentOptions([]));
+  }, []);
+
+  const handleEquipmentChange = (equipmentId: number, quantity: number) => {
+    const sanitized = Math.max(0, Math.round(quantity));
+    const existing = wizard.equipment.find((item) => item.equipmentId === equipmentId);
+    const option = equipmentOptions.find((item) => item.id === equipmentId);
+
+    const updated = sanitized === 0
+      ? wizard.equipment.filter((item) => item.equipmentId !== equipmentId)
+      : wizard.equipment.map((item) => item.equipmentId === equipmentId
+          ? { ...item, quantity: sanitized, totalPrice: item.unitPrice * sanitized }
+          : item);
+
+    if (!existing && sanitized > 0 && option) {
+      updated.push({
+        equipmentId,
+        equipmentName: option.equipmentName,
+        chargeUnit: option.chargeUnit,
+        unitPrice: option.amount,
+        quantity: sanitized,
+        totalPrice: option.amount * sanitized,
+      });
+    }
+
+    dispatch(setSummary({ equipment: updated }));
+  };
 
   // Load this venue's pricing tiers (the use-case options from the rate chart)
   // whenever the selected venue changes.
@@ -104,15 +156,49 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     setValue('priceItemName', '');
   }, [venueId]);
 
+  const mergeAvailability = (incomingSlots: any[]) => {
+    setSlots((currentSlots) => {
+      const byDate = new Map(currentSlots.map((slot) => [String(slot.date).slice(0, 10), slot]));
+      incomingSlots.forEach((slot) => byDate.set(String(slot.date).slice(0, 10), slot));
+      const mergedSlots: any[] = [];
+      byDate.forEach((slot) => mergedSlots.push(slot));
+      return mergedSlots.sort((left, right) => String(left.date).localeCompare(String(right.date)));
+    });
+  };
+
   useEffect(() => {
-    if (venueId && fromDate && toDate && fromDate <= toDate) {
-      setChecking(true);
-      bookingAPI.checkAvailability({ venueId, fromDate, toDate })
-        .then((r) => setSlots(r.data.slots || []))
-        .catch(() => {})
-        .finally(() => setChecking(false));
-    }
-  }, [venueId, fromDate, toDate]);
+    if (!venueId) { setSlots([]); return; }
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const from = formatDateKey(new Date(year, month, 1));
+    const to = formatDateKey(new Date(year, month + 1, 0));
+    let current = true;
+    setSlots([]);
+    setChecking(true);
+    bookingAPI.checkAvailability({ venueId, fromDate: from, toDate: to })
+      .then((r) => { if (current) setSlots(r.data.slots || []); })
+      .catch(() => { if (current) setSlots([]); })
+      .finally(() => { if (current) setChecking(false); });
+    return () => { current = false; };
+  }, [venueId, calendarMonth]);
+
+  useEffect(() => {
+    if (!venueId || !activeDate) return;
+    let current = true;
+    bookingAPI.checkAvailability({ venueId, fromDate: activeDate, toDate: activeDate })
+      .then((r) => { if (current) mergeAvailability(r.data.slots || []); })
+      .catch(() => {});
+    return () => { current = false; };
+  }, [venueId, activeDate]);
+
+  useEffect(() => {
+    if (!fromDate) return;
+    setActiveDate(fromDate);
+    const selected = new Date(`${fromDate}T00:00:00`);
+    setCalendarMonth((current) => current.getFullYear() === selected.getFullYear() && current.getMonth() === selected.getMonth()
+      ? current
+      : new Date(selected.getFullYear(), selected.getMonth(), 1));
+  }, [fromDate]);
 
   // Keep priceItemName in sync for validation (required in schema)
   useEffect(() => {
@@ -122,7 +208,8 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   const getStatusColor = (status: string) => {
     if (status === 'Available')   return 'success';
-    if (status === 'Booked')      return 'error';
+    if (status === 'Partially Booked') return 'warning';
+    if (status === 'Booked' || status === 'Full') return 'error';
     return 'default';
   };
 
@@ -133,13 +220,64 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     return slot.fullDayStatus;
   };
 
-  const hasSelectedSessionConflict = slots.some((slot: any) => statusForSession(slot, session) === 'Booked');
+  const activeSlot = slots.find((slot: any) => String(slot.date).slice(0, 10) === activeDate);
+  const isSessionUnavailable = (sess: string) => !activeSlot || statusForSession(activeSlot, sess) !== 'Available';
+  const hasSelectedSessionConflict = !!activeSlot && statusForSession(activeSlot, session) === 'Booked';
+  const todayKey = formatDateKey(new Date());
+  const monthYear = calendarMonth.getFullYear();
+  const monthIndex = calendarMonth.getMonth();
+  const calendarCells: Array<Date | null> = [];
+  for (let blank = 0; blank < new Date(monthYear, monthIndex, 1).getDay(); blank++) calendarCells.push(null);
+  for (let day = 1; day <= new Date(monthYear, monthIndex + 1, 0).getDate(); day++) {
+    calendarCells.push(new Date(monthYear, monthIndex, day));
+  }
+  while (calendarCells.length % 7 !== 0) calendarCells.push(null);
+  const calendarStatus = (dateKey: string) => {
+    if (dateKey < todayKey) return 'past';
+    const daySlot = slots.find((slot: any) => String(slot.date).slice(0, 10) === dateKey);
+    if (!daySlot) return 'unavailable';
+    if (typeof daySlot.bookedSlots === 'number' && typeof daySlot.availableSlots === 'number') {
+      if (daySlot.bookedSlots === 0 && daySlot.availableSlots > 0) return 'available';
+      if (daySlot.availableSlots > 0) return 'partial';
+      return 'full';
+    }
+    const statuses = [daySlot.morningStatus, daySlot.eveningStatus];
+    const availableCount = statuses.filter((status) => status === 'Available').length;
+    if (availableCount === statuses.length) return 'available';
+    if (availableCount > 0) return 'partial';
+    return 'full';
+  };
+  const monthLabel = calendarMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const previousMonthDisabled = calendarMonth.getTime() <= currentMonthStart.getTime();
 
-  const onSubmit = (data: any) => {
-    // Re-validate the selected Venue + Date + Session combination before
-    // moving on — the same check runs again on the server at final
-    // submission to close any race-condition window.
-    if (hasSelectedSessionConflict) {
+  const selectCalendarDate = (date: Date) => {
+    const dateKey = formatDateKey(date);
+    if (dateKey < todayKey) return;
+    setActiveDate(dateKey);
+    setValue('fromDate', dateKey, { shouldDirty: true, shouldValidate: true });
+    setValue('toDate', dateKey, { shouldDirty: true, shouldValidate: true });
+  };
+
+  const onSubmit = async (data: any) => {
+    setValidatingAvailability(true);
+    let latestSlots: any[];
+    try {
+      const response = await bookingAPI.checkAvailability({
+        venueId: data.venueId,
+        fromDate: data.fromDate,
+        toDate: data.toDate,
+      });
+      latestSlots = response.data.slots || [];
+      mergeAvailability(latestSlots);
+    } catch {
+      toast.error('Could not verify availability. Please try again.');
+      setValidatingAvailability(false);
+      return;
+    }
+    setValidatingAvailability(false);
+
+    if (latestSlots.some((slot) => statusForSession(slot, data.session) === 'Booked')) {
       toast.error(`The ${data.session} session is already booked for one or more of the selected dates. Please choose a different date or session.`);
       return;
     }
@@ -160,7 +298,7 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-      <Typography variant="h5" sx={{ mb: 3, color: '#1a3a6b', fontWeight: 700 }}>
+      <Typography variant="h5" sx={{ mb: 3, color: '#50175d', fontWeight: 700 }}>
         Check Availability
       </Typography>
       <Grid container spacing={3}>
@@ -215,25 +353,6 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
         </Grid>
         <Grid item xs={12} md={6}>
           <Controller
-            name="session"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!errors.session}>
-                <InputLabel>Session *</InputLabel>
-                <Select {...field} label="Session *">
-                  <MenuItem value="Morning">Morning</MenuItem>
-                  <MenuItem value="Evening">Evening</MenuItem>
-                  <MenuItem value="FullDay">Full Day</MenuItem>
-                </Select>
-                <FormHelperText>
-                  {errors.session?.message || 'A Morning and an Evening booking can co-exist on the same date; Full Day blocks the whole date.'}
-                </FormHelperText>
-              </FormControl>
-            )}
-          />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Controller
             name="venuePricingId"
             control={control}
             render={({ field }) => (
@@ -253,51 +372,259 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
         </Grid>
       </Grid>
 
-      {/* Availability Calendar */}
-      {checking && (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <CircularProgress size={32} />
-          <Typography variant="body2" sx={{ mt: 1, color: '#5a6a7e' }}>Checking availability...</Typography>
-        </Box>
-      )}
-
-      {slots.length > 0 && !checking && (
+      {venueId ? (
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: '#1a3a6b' }}>Availability Calendar</Typography>
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-            <Chip label="Available" color="success" size="small" />
-            <Chip label="Booked" color="error" size="small" />
-          </Box>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 2 }}>
-              {slots.map((slot: any, i: number) => (
-                <Card key={i} variant="outlined" sx={{ p: 0, border: statusForSession(slot, session) === 'Booked' ? '1px solid #d32f2f' : undefined }}>
-                  <Box sx={{ bgcolor: '#1a3a6b', p: 1, textAlign: 'center' }}>
-                    <Typography variant="caption" sx={{ color: '#fff', fontWeight: 600 }}>
-                      {new Date(slot.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+          <Typography variant="h6" sx={{ mb: 2, color: '#50175d' }}>
+            Availability Calendar: {venues.find((venue) => venue.venueId === venueId)?.venueName || 'Selected Hall'}
+          </Typography>
+          <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <IconButton
+                aria-label="Previous month"
+                onClick={() => setCalendarMonth(new Date(monthYear, monthIndex - 1, 1))}
+                disabled={previousMonthDisabled}
+                size="small"
+              >
+                <ChevronLeft />
+              </IconButton>
+              <Typography variant="h6" fontWeight={700} color="primary.main">{monthLabel}</Typography>
+              <IconButton
+                aria-label="Next month"
+                onClick={() => setCalendarMonth(new Date(monthYear, monthIndex + 1, 1))}
+                size="small"
+              >
+                <ChevronRight />
+              </IconButton>
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: { xs: 0.4, sm: 0.75 } }}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
+                <Typography key={weekday} variant="caption" align="center" fontWeight={700} color="text.secondary" sx={{ py: 0.5 }}>
+                  {weekday}
+                </Typography>
+              ))}
+              {calendarCells.map((date, index) => {
+                if (!date) return <Box key={`blank-${index}`} sx={{ minWidth: 0 }} />;
+                const dateKey = formatDateKey(date);
+                const status = calendarStatus(dateKey);
+                const isToday = dateKey === todayKey;
+                const isSelected = dateKey === activeDate;
+                const colors: Record<string, string> = {
+                  available: '#2e7d32',
+                  partial: '#ed6c02',
+                  full: '#c62828',
+                  past: '#94a3b8',
+                  unavailable: '#94a3b8',
+                };
+                const labels: Record<string, string> = {
+                  available: 'Available',
+                  partial: 'Partial',
+                  full: 'Full',
+                  past: 'Past',
+                  unavailable: checking ? 'Loading' : 'Unavailable',
+                };
+                const daySlot = slots.find((slot: any) => String(slot.date).slice(0, 10) === dateKey);
+
+                return (
+                  <ButtonBase
+                    key={dateKey}
+                    onClick={() => selectCalendarDate(date)}
+                    disabled={dateKey < todayKey || !daySlot}
+                    aria-label={`${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}: ${labels[status]}`}
+                    aria-pressed={isSelected}
+                    sx={{
+                      minWidth: 0,
+                      minHeight: { xs: 52, sm: 72 },
+                      p: { xs: 0.5, sm: 1 },
+                      border: '1px solid',
+                      borderColor: isSelected ? '#50175d' : isToday ? '#b45490' : '#e2e8f0',
+                      borderWidth: isSelected ? 2 : 1,
+                      borderRadius: 1.5,
+                      bgcolor: isSelected ? '#50175d' : '#fff',
+                      color: isSelected ? '#fff' : 'text.primary',
+                      opacity: status === 'past' || status === 'unavailable' ? 0.55 : 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      transition: 'background-color 120ms ease, border-color 120ms ease',
+                      '&:hover': { bgcolor: isSelected ? '#50175d' : '#fbf6fa' },
+                      '&.Mui-disabled': { color: 'text.disabled' },
+                    }}
+                  >
+                    <Typography variant="body2" fontWeight={isToday || isSelected ? 700 : 500}>
+                      {date.getDate()}
                     </Typography>
-                  </Box>
-                  <Box sx={{ p: 1.5, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Chip label={`Morning: ${slot.morningStatus}`} color={getStatusColor(slot.morningStatus) as any} size="small" sx={{ fontSize: '0.65rem' }} />
-                    <Chip label={`Evening: ${slot.eveningStatus}`} color={getStatusColor(slot.eveningStatus) as any} size="small" sx={{ fontSize: '0.65rem' }} />
-                    <Chip label={`Full Day: ${slot.fullDayStatus}`} color={getStatusColor(slot.fullDayStatus) as any} size="small" sx={{ fontSize: '0.65rem' }} />
-                  </Box>
-                </Card>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, width: '100%', minWidth: 0 }}>
+                      <Box sx={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, bgcolor: colors[status] }} />
+                      <Typography variant="caption" noWrap sx={{ display: { xs: 'none', sm: 'block' }, fontSize: '0.65rem' }}>
+                        {isToday ? 'Today' : labels[status]}
+                      </Typography>
+                    </Box>
+                  </ButtonBase>
+                );
+              })}
+            </Box>
+
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 }, mt: 2 }}>
+              {[
+                ['#2e7d32', 'Available'],
+                ['#ed6c02', 'Partially booked'],
+                ['#c62828', 'Fully booked'],
+                ['#94a3b8', 'Past / unavailable'],
+              ].map(([color, label]) => (
+                <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color }} />
+                  <Typography variant="caption" color="text.secondary">{label}</Typography>
+                </Box>
               ))}
             </Box>
-          </Box>
-          {hasSelectedSessionConflict && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              The selected <strong>{session}</strong> session is already booked on one or more of these dates for this venue.
-              Please pick a different date, venue, or session.
-            </Alert>
+            {checking && <LinearProgress sx={{ mt: 2 }} />}
+          </Paper>
+
+          {activeDate && (
+            <Paper variant="outlined" sx={{ mt: 2, p: { xs: 2, sm: 2.5 }, borderRadius: 2 }}>
+              <Typography variant="subtitle1" fontWeight={700} color="primary.main">
+                {new Date(`${activeDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {venues.find((venue) => venue.venueId === venueId)?.venueName || 'Selected Hall'}
+              </Typography>
+              {!activeSlot ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={18} />
+                  <Typography variant="body2" color="text.secondary">Loading session availability...</Typography>
+                </Box>
+              ) : (
+                <>
+                  <Grid container spacing={1} sx={{ mb: 2 }}>
+                    {[
+                      ['Total slots', activeSlot.totalSlots ?? '—'],
+                      ['Booked', activeSlot.bookedSlots ?? '—'],
+                      ['Available', activeSlot.availableSlots ?? '—'],
+                      ['Cancelled', activeSlot.cancelledBookingCount ?? '—'],
+                    ].map(([label, value]) => (
+                      <Grid item xs={6} sm={3} key={label}>
+                        <Paper variant="outlined" sx={{ p: 1, textAlign: 'center' }}>
+                          <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
+                          <Typography variant="subtitle1" fontWeight={700}>{value}</Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                  <Controller
+                  name="session"
+                  control={control}
+                  render={({ field }) => (
+                    <Grid container spacing={1.5}>
+                      {[
+                        { value: 'Morning', status: activeSlot.morningStatus },
+                        { value: 'Evening', status: activeSlot.eveningStatus },
+                        { value: 'FullDay', label: 'Full Day', status: activeSlot.fullDayStatus },
+                      ].map((option: any) => {
+                        const optionName = option.label || option.value;
+                        const counts = activeSlot.sessions?.find((item: any) => item.session === option.value);
+                        const displayStatus = counts?.status === 'Full'
+                          ? 'Booked'
+                          : counts?.status || (option.status === 'Booked' ? 'Booked' : 'Available');
+                        const unavailable = option.status !== 'Available' || activeDate < todayKey;
+                        return (
+                          <Grid item xs={12} sm={4} key={option.value}>
+                            <Paper variant="outlined" sx={{ height: '100%', p: 1.5, borderColor: field.value === option.value ? '#50175d' : '#e2e8f0' }}>
+                              <FormControlLabel
+                                sx={{ m: 0, width: '100%', alignItems: 'flex-start' }}
+                                control={(
+                                  <Checkbox
+                                    checked={field.value === option.value}
+                                    onChange={() => field.onChange(option.value)}
+                                    disabled={unavailable}
+                                    sx={{ pt: 0.25 }}
+                                  />
+                                )}
+                                label={(
+                                  <Box sx={{ pt: 0.5 }}>
+                                    <Typography variant="body2" fontWeight={700}>{optionName}</Typography>
+                                    <Chip
+                                      label={displayStatus}
+                                      color={getStatusColor(displayStatus) as any}
+                                      size="small"
+                                      sx={{ mt: 0.75 }}
+                                    />
+                                    {counts && (
+                                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                                        Booked {counts.bookedSlots} · Available {counts.availableSlots}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                )}
+                              />
+                            </Paper>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  )}
+                  />
+                </>
+              )}
+              {errors.session && <FormHelperText error>{errors.session.message}</FormHelperText>}
+              {hasSelectedSessionConflict && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  The selected session is unavailable on this date. Choose an available session to continue.
+                </Alert>
+              )}
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+                A Full Day booking occupies both the Morning and Evening sessions.
+              </Typography>
+            </Paper>
           )}
         </Box>
+      ) : (
+        <Alert severity="info" sx={{ mt: 3 }}>Select a hall to view its availability calendar.</Alert>
       )}
 
+      <Paper variant="outlined" sx={{ mt: 3, borderRadius: 2, overflow: 'hidden' }}>
+        <Box sx={{ bgcolor: '#50175d', p: 2 }}>
+          <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 600 }}>Optional Equipment</Typography>
+        </Box>
+        <Box sx={{ p: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Add required equipment to your booking. Charges are calculated based on quantity selected.
+          </Typography>
+          {equipmentOptions.length === 0 ? (
+            <Typography variant="body2">No equipment options are available at the moment.</Typography>
+          ) : (
+            <Grid container spacing={2}>
+              {equipmentOptions.map((item) => {
+                const selected = wizard.equipment.find((e) => e.equipmentId === item.id);
+                return (
+                  <Grid item xs={12} sm={6} md={4} key={item.id}>
+                    <Paper variant="outlined" sx={{ p: 2, minHeight: 140 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>{item.equipmentName}</Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {item.chargeUnit} @ ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </Typography>
+                      <TextField
+                        label="Quantity"
+                        type="number"
+                        fullWidth
+                        value={selected?.quantity ?? 0}
+                        onChange={(e) => handleEquipmentChange(item.id, Number(e.target.value))}
+                        inputProps={{ min: 0 }}
+                        sx={{ mt: 2 }}
+                      />
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </Box>
+      </Paper>
+
       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button type="submit" variant="contained" color="primary" size="large" endIcon={<ArrowForward />} disabled={hasSelectedSessionConflict}>
-          Proceed to Summary
+        <Button type="submit" variant="contained" color="primary" size="large" endIcon={validatingAvailability ? <CircularProgress size={18} /> : <ArrowForward />} disabled={hasSelectedSessionConflict || validatingAvailability}>
+          {validatingAvailability ? 'Checking availability...' : 'Proceed to Summary'}
         </Button>
       </Box>
     </Box>
@@ -309,15 +636,8 @@ const Step2Summary: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ on
   const dispatch = useDispatch();
   const wizard   = useSelector((s: RootState) => s.booking);
   const [summary, setSummaryData] = useState<any>(null);
-  const [equipmentOptions, setEquipmentOptions] = useState<VenueEquipment[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
-
-  useEffect(() => {
-    venueAPI.getEquipment()
-      .then((r) => setEquipmentOptions(r.data || []))
-      .catch(() => setEquipmentOptions([]));
-  }, []);
 
   useEffect(() => {
     if (!wizard.venueId || !wizard.venuePricingId) return;
@@ -359,31 +679,6 @@ const Step2Summary: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ on
 
   const fmt = (n: number) => `₹${n?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
-  const handleEquipmentChange = (equipmentId: number, quantity: number) => {
-    const sanitized = Math.max(0, Math.round(quantity));
-    const existing = wizard.equipment.find((item) => item.equipmentId === equipmentId);
-    const option = equipmentOptions.find((item) => item.id === equipmentId);
-
-    const updated = sanitized === 0
-      ? wizard.equipment.filter((item) => item.equipmentId !== equipmentId)
-      : wizard.equipment.map((item) => item.equipmentId === equipmentId
-          ? { ...item, quantity: sanitized, totalPrice: item.unitPrice * sanitized }
-          : item);
-
-    if (!existing && sanitized > 0 && option) {
-      updated.push({
-        equipmentId,
-        equipmentName: option.equipmentName,
-        chargeUnit: option.chargeUnit,
-        unitPrice: option.amount,
-        quantity: sanitized,
-        totalPrice: option.amount * sanitized,
-      });
-    }
-
-    dispatch(setSummary({ equipment: updated }));
-  };
-
   if (loading) return (
     <Box textAlign="center" py={6}><CircularProgress /><Typography sx={{ mt: 2 }}>Calculating summary...</Typography></Box>
   );
@@ -410,11 +705,11 @@ const Step2Summary: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ on
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 3, color: '#1a3a6b', fontWeight: 700 }}>Booking Summary</Typography>
+      <Typography variant="h5" sx={{ mb: 3, color: '#50175d', fontWeight: 700 }}>Booking Summary</Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
           <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Box sx={{ bgcolor: '#1a3a6b', p: 2 }}>
+            <Box sx={{ bgcolor: '#50175d', p: 2 }}>
               <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 600 }}>Booking Details</Typography>
             </Box>
             {rows.map((r) => (
@@ -425,48 +720,10 @@ const Step2Summary: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ on
             ))}
           </Paper>
 
-          <Paper variant="outlined" sx={{ mt: 3, borderRadius: 2, overflow: 'hidden' }}>
-            <Box sx={{ bgcolor: '#1a3a6b', p: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 600 }}>Optional Equipment</Typography>
-            </Box>
-            <Box sx={{ p: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Add required equipment to your booking. Charges are calculated based on quantity selected.
-              </Typography>
-              {equipmentOptions.length === 0 ? (
-                <Typography variant="body2">No equipment options are available at the moment.</Typography>
-              ) : (
-                <Grid container spacing={2}>
-                  {equipmentOptions.map((item) => {
-                    const selected = wizard.equipment.find((e) => e.equipmentId === item.id);
-                    return (
-                      <Grid item xs={12} md={6} key={item.id}>
-                        <Paper variant="outlined" sx={{ p: 2, minHeight: 140 }}>
-                          <Typography variant="subtitle2" sx={{ mb: 1 }}>{item.equipmentName}</Typography>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {item.chargeUnit} @ ₹{item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </Typography>
-                          <TextField
-                            label="Quantity"
-                            type="number"
-                            fullWidth
-                            value={selected?.quantity ?? 0}
-                            onChange={(e) => handleEquipmentChange(item.id, Number(e.target.value))}
-                            inputProps={{ min: 0 }}
-                            sx={{ mt: 2 }}
-                          />
-                        </Paper>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
-            </Box>
-          </Paper>
         </Grid>
         <Grid item xs={12} md={5}>
           <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Box sx={{ bgcolor: '#1a3a6b', p: 2 }}>
+            <Box sx={{ bgcolor: '#50175d', p: 2 }}>
               <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 600 }}>Cost Breakdown</Typography>
             </Box>
             {charges.map((c) => (
@@ -475,9 +732,9 @@ const Step2Summary: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ on
                 <Typography variant="body2" fontWeight={600}>{c.value}</Typography>
               </Box>
             ))}
-            <Box sx={{ bgcolor: '#1a3a6b', p: 2, display: 'flex', justifyContent: 'space-between' }}>
+            <Box sx={{ bgcolor: '#50175d', p: 2, display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 700 }}>Grand Total</Typography>
-              <Typography variant="subtitle1" sx={{ color: '#c9a227', fontWeight: 800 }}>{fmt(summary?.grandTotal)}</Typography>
+              <Typography variant="subtitle1" sx={{ color: '#d68db8', fontWeight: 800 }}>{fmt(summary?.grandTotal)}</Typography>
             </Box>
           </Paper>
           <Alert severity="info" sx={{ mt: 2 }}>
@@ -516,7 +773,7 @@ const Step3Applicant: React.FC<{ onNext: () => void; onPrev: () => void }> = ({ 
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-      <Typography variant="h5" sx={{ mb: 3, color: '#1a3a6b', fontWeight: 700 }}>Applicant Details</Typography>
+      <Typography variant="h5" sx={{ mb: 3, color: '#50175d', fontWeight: 700 }}>Applicant Details</Typography>
       <Grid container spacing={2.5}>
         {[
           { name: 'fullName',      label: 'Full Name *',              md: 6 },
@@ -629,7 +886,7 @@ const Step4BankDetails: React.FC<{ onNext: () => void; onPrev: () => void }> = (
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-      <Typography variant="h5" sx={{ mb: 3, color: '#1a3a6b', fontWeight: 700 }}>Bank Details</Typography>
+      <Typography variant="h5" sx={{ mb: 3, color: '#50175d', fontWeight: 700 }}>Bank Details</Typography>
       <Alert severity="info" sx={{ mb: 3 }}>
         Your bank details are required for refund processing in case of cancellation.
       </Alert>
@@ -672,7 +929,7 @@ const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = (
   const dispatch = useDispatch();
   const wizard   = useSelector((s: RootState) => s.booking);
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'Card' | 'UPI'>('Card');
+  const paymentMethod: 'Card' = 'Card';
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -809,7 +1066,7 @@ const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = (
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 3, color: '#1a3a6b', fontWeight: 700 }}>Review & Confirm</Typography>
+      <Typography variant="h5" sx={{ mb: 3, color: '#50175d', fontWeight: 700 }}>Review & Confirm</Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
@@ -857,21 +1114,6 @@ const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = (
           Do NOT make payment to any unauthorized account.
         </Typography>
       </Alert>
-      <Paper variant="outlined" sx={{ mt: 3, p: 2, borderRadius: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Select payment method</Typography>
-        <FormControl fullWidth>
-          <InputLabel>Payment Method</InputLabel>
-          <Select
-            value={paymentMethod}
-            label="Payment Method"
-            onChange={(e) => setPaymentMethod(e.target.value as 'Card' | 'UPI')}
-          >
-            <MenuItem value="Card">Debit/Credit Card</MenuItem>
-            <MenuItem value="UPI">UPI</MenuItem>
-          </Select>
-          <FormHelperText>Choose how you would like to complete the payment.</FormHelperText>
-        </FormControl>
-      </Paper>
       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
         <Button onClick={onPrev} startIcon={<ArrowBack />} variant="outlined" disabled={loading}>Back</Button>
         <Button
@@ -896,10 +1138,10 @@ const BookingSuccess: React.FC = () => {
   return (
     <Box textAlign="center" py={4}>
       <CheckCircle sx={{ fontSize: 80, color: '#2e7d32', mb: 2 }} />
-      <Typography variant="h4" sx={{ color: '#1a3a6b', fontWeight: 700, mb: 1 }}>
+      <Typography variant="h4" sx={{ color: '#50175d', fontWeight: 700, mb: 1 }}>
         Booking Submitted Successfully!
       </Typography>
-      <Typography variant="h5" sx={{ color: '#c9a227', fontWeight: 800, mb: 2 }}>
+      <Typography variant="h5" sx={{ color: '#d68db8', fontWeight: 800, mb: 2 }}>
         Booking ID: {wizard.bookingNumber}
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
@@ -940,10 +1182,10 @@ const BookingPage: React.FC = () => {
   const onPrev  = () => dispatch(prevStep());
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: { xs: 2, sm: 3, md: 4 } }}>
+    <Box sx={{ bgcolor: '#fbf6fa', minHeight: '100vh', py: { xs: 2, sm: 3, md: 4 } }}>
       <Container maxWidth="lg">
         <Box textAlign="center" mb={{ xs: 2.5, sm: 4 }}>
-          <Typography variant="h4" sx={{ color: '#1a3a6b', fontWeight: 700 }}>
+          <Typography variant="h4" sx={{ color: '#50175d', fontWeight: 700 }}>
             Book Your Venue
           </Typography>
           <Typography variant="body1" color="text.secondary" mt={1}>

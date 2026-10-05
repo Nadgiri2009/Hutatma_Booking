@@ -147,7 +147,7 @@ export const AdminGalleryPage: React.FC = () => {
       </Grid>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>Add Gallery Item</DialogTitle>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>Add Gallery Item</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Grid container spacing={2} sx={{ mt: 0 }}>
             <Grid item xs={12} md={6}>
@@ -227,7 +227,7 @@ export const AdminNoticesPage: React.FC = () => {
       else         { await noticeAPI.create(data);             toast.success('Notice published!'); }
       setOpen(false);
       load();
-    } catch { toast.error('Operation failed'); }
+    } catch { toast.error('Transaction failed'); }
   };
 
   const handleDelete = async (id: number) => {
@@ -305,7 +305,7 @@ export const AdminNoticesPage: React.FC = () => {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>
           {editing ? 'Edit Notice' : 'Publish Notice'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>

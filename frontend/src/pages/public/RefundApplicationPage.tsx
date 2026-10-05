@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Container, Divider, Grid,
-  Paper, TextField, ToggleButton, ToggleButtonGroup, Typography,
+  Alert, Box, Button, Checkbox, Chip, CircularProgress, Container, Divider, Grid,
+  Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import { refundAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
-
-type SearchType = 'number' | 'mobile';
 
 type RefundBooking = {
   bookingId: number;
@@ -68,10 +66,12 @@ const Detail: React.FC<{ label: string; value: React.ReactNode }> = ({ label, va
 );
 
 const RefundApplicationPage: React.FC = () => {
-  const [searchType, setSearchType] = useState<SearchType>('number');
+  const pageSize = 10;
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<RefundBooking[]>([]);
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [otpBookingId, setOtpBookingId] = useState<number | null>(null);
@@ -80,33 +80,59 @@ const RefundApplicationPage: React.FC = () => {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
 
-  const selected = results.find((booking) => booking.bookingId === selectedId) || null;
+  const selected = selectedIds.includes(selectedId ?? -1)
+    ? results.find((booking) => booking.bookingId === selectedId) || null
+    : null;
+  const pageCount = Math.ceil(results.length / pageSize);
+  const pageResults = results.slice((page - 1) * pageSize, page * pageSize);
+  const refundIneligible = results.filter((booking) =>
+    !booking.eligibleForRefund && !booking.refundRequest && !booking.existingCancellation);
+  const refundEligibilityMessages = Array.from(new Set(refundIneligible.map((booking) =>
+    booking.eligibilityMessage || 'This application is not eligible for a refund.')));
 
   const handleSearch = async () => {
     if (!search.trim()) {
-      setError(searchType === 'number' ? 'Enter an application number.' : 'Enter the registered mobile number.');
+      setError('Enter an application number or registered mobile number.');
       return;
     }
     setLoading(true);
     setSearched(true);
     setError('');
     setResults([]);
+    setPage(1);
     setSelectedId(null);
+    setSelectedIds([]);
     setOtpBookingId(null);
     setOtp('');
     setVerifiedBankDetails(null);
     try {
-      const response = await refundAPI.lookup(searchType === 'number'
-        ? { bookingNumber: search.trim() }
-        : { mobile: search.trim() });
+      const value = search.trim();
+      const isMobileNumber = /^\+?\d{10,15}$/.test(value);
+      const response = await refundAPI.lookup(isMobileNumber
+        ? { mobile: value }
+        : { bookingNumber: value });
       const bookings = response.data as RefundBooking[];
       setResults(bookings);
-      if (bookings.length === 1) setSelectedId(bookings[0].bookingId);
     } catch (requestError: any) {
       setError(requestError.response?.data?.error || 'Unable to find a booking. Check the details and try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleBookingSelection = (bookingId: number) => {
+    const isSelected = selectedIds.includes(bookingId);
+    const nextSelectedIds = isSelected
+      ? selectedIds.filter((id) => id !== bookingId)
+      : [...selectedIds, bookingId];
+    setSelectedIds(nextSelectedIds);
+    setSelectedId(isSelected
+      ? (selectedId === bookingId ? nextSelectedIds[nextSelectedIds.length - 1] ?? null : selectedId)
+      : bookingId);
+    setOtpBookingId(null);
+    setOtp('');
+    setVerifiedBankDetails(null);
+    setError('');
   };
 
   const handleApply = async (booking: RefundBooking) => {
@@ -158,7 +184,7 @@ const RefundApplicationPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: 'calc(100vh - 72px)', py: { xs: 3, md: 6 } }}>
+    <Box sx={{ bgcolor: '#fbf6fa', minHeight: 'calc(100vh - 72px)', py: { xs: 3, md: 6 } }}>
       <Container maxWidth="md">
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" fontWeight={800} color="primary.main">Apply Refund</Typography>
@@ -168,22 +194,11 @@ const RefundApplicationPage: React.FC = () => {
         </Box>
 
         <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 1.5, mb: 3 }}>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={searchType}
-            onChange={(_, value: SearchType | null) => value && setSearchType(value)}
-            sx={{ mb: 2 }}
-            aria-label="Search using application number or mobile number"
-          >
-            <ToggleButton value="number">Application Number</ToggleButton>
-            <ToggleButton value="mobile">Mobile Number</ToggleButton>
-          </ToggleButtonGroup>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <TextField
               fullWidth
-              label={searchType === 'number' ? 'Application Number' : 'Registered Mobile Number'}
-              placeholder={searchType === 'number' ? 'e.g. HSM-2026-00001' : 'Enter registered mobile number'}
+              label="Application Number or Registered Mobile Number"
+              placeholder="e.g. HSM-2026-00001 or 9876543210"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
@@ -197,31 +212,186 @@ const RefundApplicationPage: React.FC = () => {
               startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}
               sx={{ minWidth: 150 }}
             >
-              {loading ? 'Searching' : 'Fetch Booking'}
+              {loading ? 'Searching' : 'Fetch Applications'}
             </Button>
           </Box>
         </Paper>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {searched && !loading && !results.length && !error && (
-          <Alert severity="info" sx={{ mb: 2 }}>No booking was found. Check the application number or registered mobile number.</Alert>
+          <Alert severity="info" sx={{ mb: 2 }}>No application was found. Check the application number or registered mobile number.</Alert>
+        )}
+        {refundIneligible.length > 0 && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {refundIneligible.length} {refundIneligible.length === 1 ? 'application is' : 'applications are'} not eligible for refund. {refundEligibilityMessages.join(' ')}
+          </Alert>
         )}
 
-        {results.length > 1 && (
-          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1.5 }}>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Select a booking</Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {results.map((booking) => (
-                <Button
-                  key={booking.bookingId}
-                  size="small"
-                  variant={selectedId === booking.bookingId ? 'contained' : 'outlined'}
-                  onClick={() => setSelectedId(booking.bookingId)}
-                >
-                  {booking.applicationNumber} · {booking.venue}
-                </Button>
-              ))}
+        {results.length > 0 && (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: 1.5,
+              width: 'min(1280px, calc(100vw - 32px))',
+              position: 'relative',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Applications</Typography>
+            <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
+              <TableContainer sx={{ overflowX: 'hidden' }}>
+              <Table
+                size="small"
+                aria-label="Refund applications"
+                sx={{
+                  width: '100%',
+                  tableLayout: 'fixed',
+                  '& th, & td': {
+                    px: 0.5,
+                    py: 0.75,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  },
+                  '& th:nth-of-type(1), & td:nth-of-type(1)': { width: 44 },
+                  '& th:nth-of-type(2), & td:nth-of-type(2)': { width: 40, px: 0, textAlign: 'center' },
+                  '& th:nth-of-type(3), & td:nth-of-type(3)': { width: 58 },
+                  '& th:nth-of-type(4), & td:nth-of-type(4)': { width: 105 },
+                  '& th:nth-of-type(5), & td:nth-of-type(5)': { width: 120 },
+                  '& th:nth-of-type(6), & td:nth-of-type(6)': { width: 95 },
+                  '& th:nth-of-type(7), & td:nth-of-type(7)': { width: 90 },
+                  '& th:nth-of-type(8), & td:nth-of-type(8)': { width: 105 },
+                  '& th:nth-of-type(9), & td:nth-of-type(9)': { width: 80 },
+                  '& th:nth-of-type(10), & td:nth-of-type(10)': { width: 65 },
+                  '& th:nth-of-type(11), & td:nth-of-type(11)': { width: 100 },
+                  '& th:nth-of-type(12), & td:nth-of-type(12)': { width: 82 },
+                }}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell>S.No.</TableCell>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Booking ID</TableCell>
+                    <TableCell>Application No.</TableCell>
+                    <TableCell>Hall / Venue</TableCell>
+                    <TableCell>Citizen Name</TableCell>
+                    <TableCell>Mobile Number</TableCell>
+                    <TableCell>Booking Date</TableCell>
+                    <TableCell>Booking Status</TableCell>
+                    <TableCell>Payment Status</TableCell>
+                    <TableCell>Refund Status</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pageResults.map((booking, index) => {
+                    const isSelected = selectedIds.includes(booking.bookingId);
+                    const refundStatus = booking.refundRequest
+                      ? 'Refund Applied'
+                      : booking.existingCancellation
+                        ? 'Cancellation Refund'
+                        : booking.eligibleForRefund
+                          ? 'Eligible'
+                          : 'Not eligible';
+                    return (
+                      <TableRow
+                        key={booking.bookingId}
+                        selected={selectedId === booking.bookingId && isSelected}
+                      >
+                        <TableCell>{(page - 1) * pageSize + index + 1}</TableCell>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={isSelected}
+                            onChange={() => toggleBookingSelection(booking.bookingId)}
+                            inputProps={{ 'aria-label': `Select ${booking.applicationNumber} for refund` }}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{booking.bookingId}</TableCell>
+                        <TableCell>{booking.applicationNumber}</TableCell>
+                        <TableCell>{booking.venue}</TableCell>
+                        <TableCell>{booking.applicantName}</TableCell>
+                        <TableCell>{booking.contactNumber}</TableCell>
+                        <TableCell>
+                          {booking.fromDate === booking.toDate ? booking.fromDate : `${booking.fromDate} - ${booking.toDate}`}
+                        </TableCell>
+                        <TableCell>{booking.bookingStatus.replace(/([a-z])([A-Z])/g, '$1 $2')}</TableCell>
+                        <TableCell>{booking.paymentStatus}</TableCell>
+                        <TableCell title={booking.refundRequest ? `Refund status: ${booking.refundRequest.status}` : booking.existingCancellation ? `Refund status: ${booking.existingCancellation.refundStatus}` : booking.eligibilityMessage || undefined}>{refundStatus}</TableCell>
+                        <TableCell>
+                          {booking.eligibleForRefund ? (
+                            <Button
+                              size="small"
+                              onClick={() => handleApply(booking)}
+                              disabled={!isSelected || applyingId === booking.bookingId}
+                            >
+                              {applyingId === booking.bookingId ? <CircularProgress size={16} /> : 'Apply'}
+                            </Button>
+                          ) : booking.refundRequest ? 'Already applied' : '—'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              </TableContainer>
             </Box>
+            <Box component="ol" sx={{ display: { xs: 'block', lg: 'none' }, m: 0, p: 0, listStyle: 'none' }}>
+              {pageResults.map((booking, index) => {
+                const isSelected = selectedIds.includes(booking.bookingId);
+                const refundStatus = booking.refundRequest
+                  ? 'Refund Applied'
+                  : booking.existingCancellation
+                    ? 'Cancellation Refund'
+                    : booking.eligibleForRefund
+                      ? 'Eligible'
+                      : 'Not eligible';
+                return (
+                  <Box
+                    component="li"
+                    key={booking.bookingId}
+                    sx={{ py: 1.25, borderBottom: index < pageResults.length - 1 ? '1px solid #e7ebf0' : 'none' }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" color="text.secondary">{(page - 1) * pageSize + index + 1}.</Typography>
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => toggleBookingSelection(booking.bookingId)}
+                        inputProps={{ 'aria-label': `Select ${booking.applicationNumber} for refund` }}
+                        size="small"
+                      />
+                      <Typography variant="body2" fontWeight={700}>
+                        {booking.applicationNumber} · {booking.venue}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ pl: 5, display: 'grid', gap: 0.75 }}>
+                      <Typography variant="caption">Booking ID: {booking.bookingId} · Citizen: {booking.applicantName}</Typography>
+                      <Typography variant="caption">Mobile: {booking.contactNumber} · Booking date: {booking.fromDate === booking.toDate ? booking.fromDate : `${booking.fromDate} - ${booking.toDate}`}</Typography>
+                      <Typography variant="caption">Booking: {booking.bookingStatus.replace(/([a-z])([A-Z])/g, '$1 $2')} · Payment: {booking.paymentStatus}</Typography>
+                      <Typography variant="caption" title={booking.refundRequest ? `Refund status: ${booking.refundRequest.status}` : booking.existingCancellation ? `Refund status: ${booking.existingCancellation.refundStatus}` : booking.eligibilityMessage || undefined}>Refund: {refundStatus}</Typography>
+                      {booking.eligibleForRefund && (
+                        <Button
+                          size="small"
+                          onClick={() => handleApply(booking)}
+                          disabled={!isSelected || applyingId === booking.bookingId}
+                          sx={{ alignSelf: 'flex-start', ml: -1 }}
+                        >
+                          {applyingId === booking.bookingId ? <CircularProgress size={16} /> : 'Apply for Refund'}
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+            {pageCount > 1 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                <Pagination count={pageCount} page={page} onChange={(_, value) => setPage(value)} size="small" />
+              </Box>
+            )}
           </Paper>
         )}
 

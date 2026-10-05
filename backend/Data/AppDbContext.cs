@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<RefundRequest> RefundRequests => Set<RefundRequest>();
     public DbSet<AdminLoginOtp> AdminLoginOtps => Set<AdminLoginOtp>();
     public DbSet<RefundOtpChallenge> RefundOtpChallenges => Set<RefundOtpChallenge>();
+    public DbSet<CancellationOtpChallenge> CancellationOtpChallenges => Set<CancellationOtpChallenge>();
     public DbSet<AuditLog>     AuditLogs     => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder mb)
@@ -105,6 +106,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.BookingId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        mb.Entity<CancellationOtpChallenge>()
+            .HasOne<Booking>()
+            .WithMany()
+            .HasForeignKey(c => c.BookingId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         mb.Entity<Role>().HasData(
             new Role { Id = 1, Name = "Admin", Description = "System Administrator", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5981) },
             new Role { Id = 2, Name = "Staff", Description = "Office Staff", CreatedAt = new DateTime(2026, 7, 7, 17, 23, 36, 249, DateTimeKind.Utc).AddTicks(5990) },
@@ -139,6 +146,14 @@ public class AppDbContext : DbContext
         mb.Entity<VenueMaster>()
             .Property(v => v.CreatedAt)
             .HasDefaultValueSql("GETUTCDATE()");
+
+        mb.Entity<VenueMaster>()
+            .Property(v => v.MorningBookingCapacity)
+            .HasDefaultValue(30);
+
+        mb.Entity<VenueMaster>()
+            .Property(v => v.EveningBookingCapacity)
+            .HasDefaultValue(30);
 
         mb.Entity<VenueEquipment>()
             .Property(e => e.IsActive)

@@ -58,11 +58,11 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
     >
       {/* Letterhead */}
       <Box sx={{
-        bgcolor: '#1a3a6b', color: '#fff', px: 4, py: 3,
+        background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', color: '#fff', px: 4, py: 3,
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <AccountBalanceIcon sx={{ fontSize: 40, color: '#c9a227' }} />
+          <AccountBalanceIcon sx={{ fontSize: 40, color: '#f0c7df' }} />
           <Box>
             <Typography variant="h6" fontWeight={800}>Hutatma Smruti Mandir</Typography>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)' }}>
@@ -71,7 +71,7 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
           </Box>
         </Box>
         <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-          <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#c9a227', letterSpacing: 1 }}>
+          <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#f0c7df', letterSpacing: 1 }}>
             PAYMENT RECEIPT
           </Typography>
           <Typography variant="body2">Receipt No: {b.receiptNumber || '—'}</Typography>
@@ -166,12 +166,12 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
         {/* Grand total */}
         <Box sx={{
           mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          bgcolor: '#1a3a6b', borderRadius: 1, px: 3, py: 1.5,
+          background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', borderRadius: 1, px: 3, py: 1.5,
         }}>
           <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 700 }}>
             Amount Paid
           </Typography>
-          <Typography variant="h6" sx={{ color: '#c9a227', fontWeight: 800 }}>
+          <Typography variant="h6" sx={{ color: '#f0c7df', fontWeight: 800 }}>
             {fmtCurrency(amountPaid)}
           </Typography>
         </Box>

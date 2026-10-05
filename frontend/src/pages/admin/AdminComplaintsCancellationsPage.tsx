@@ -131,7 +131,7 @@ export const AdminComplaintsPage: React.FC = () => {
       </Paper>
 
       <Dialog open={resolveOpen} onClose={() => setResolveOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>
           Complaint Details
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
@@ -277,7 +277,7 @@ export const AdminCancellationsPage: React.FC = () => {
                   <TableCell align="center">
                     {c.refundStatus === 'Pending' && (
                       <Tooltip title="Process Refund">
-                        <IconButton size="small" color="warning" onClick={() => { setSelected(c); setRefundAmount(''); setProcessOpen(true); }}>
+                        <IconButton size="small" color="warning" onClick={() => { setSelected(c); setRefundAmount(String(c.refundAmount ?? 0)); setProcessOpen(true); }}>
                           <Check fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -296,7 +296,7 @@ export const AdminCancellationsPage: React.FC = () => {
       </Paper>
 
       <Dialog open={processOpen} onClose={() => setProcessOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>Process Refund</DialogTitle>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>Process Refund</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           {selected && (
             <>
@@ -307,8 +307,9 @@ export const AdminCancellationsPage: React.FC = () => {
               <TextField
                 label="Refund Amount (₹) *" type="number" fullWidth sx={{ mt: 2 }}
                 value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
+                InputProps={{ readOnly: true }}
                 inputProps={{ min: 0 }}
+                helperText="Calculated from the cancellation date and the published refund policy."
               />
             </>
           )}

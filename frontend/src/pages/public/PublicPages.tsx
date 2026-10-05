@@ -36,7 +36,7 @@ export const PrintBookingPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: 6 }}>
+    <Box sx={{ bgcolor: '#fbf6fa', minHeight: '100vh', py: 6 }}>
       <Container maxWidth="md">
         <Box textAlign="center" mb={5} sx={{ displayPrint: 'none' }}>
           <Typography variant="h4" fontWeight={700} color="primary.main">Print Booking Details</Typography>
@@ -110,7 +110,7 @@ export const PrintBookingPage: React.FC = () => {
 // ── ABOUT VENUE PAGE ──────────────────────────────────────────────────────────
 export const AboutVenuePage: React.FC = () => (
   <Box>
-    <Box sx={{ bgcolor: '#1a3a6b', py: 8, textAlign: 'center' }}>
+    <Box sx={{ background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', py: 8, textAlign: 'center' }}>
       <Container maxWidth="md">
         <Typography variant="h3" sx={{ color: '#fff', fontWeight: 800 }}>About Hutatma Smruti Mandir</Typography>
         <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)', mt: 2, fontWeight: 400 }}>
@@ -123,8 +123,8 @@ export const AboutVenuePage: React.FC = () => (
       <Container maxWidth="lg">
         <Grid container spacing={6} alignItems="center">
           <Grid item xs={12} md={6}>
-            <Typography variant="overline" sx={{ color: '#c9a227', fontWeight: 700, letterSpacing: 2 }}>OUR HISTORY</Typography>
-            <Typography variant="h4" sx={{ color: '#1a3a6b', mt: 1, mb: 3 }}>A Legacy of Service</Typography>
+            <Typography variant="overline" sx={{ color: '#b45490', fontWeight: 700, letterSpacing: 2 }}>OUR HISTORY</Typography>
+            <Typography variant="h4" sx={{ color: '#50175d', mt: 1, mb: 3 }}>A Legacy of Service</Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
               Hutatma Smruti Mandir was established in honour of the brave freedom fighters (Hutatmas) who sacrificed their lives for the nation.
               The institution has been serving the local community for decades, providing a world-class venue for cultural, social, and corporate events.
@@ -138,8 +138,8 @@ export const AboutVenuePage: React.FC = () => (
               'Community-focused operations',
               'Transparent booking process',
             ].map((f) => (
-              <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#c9a227' }} />
+                <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#b45490' }} />
                 <Typography variant="body2">{f}</Typography>
               </Box>
             ))}
@@ -155,9 +155,9 @@ export const AboutVenuePage: React.FC = () => (
       </Container>
     </Box>
 
-    <Box sx={{ py: 8, bgcolor: '#f5f7fa' }}>
+    <Box sx={{ py: 8, bgcolor: '#fbf6fa' }}>
       <Container maxWidth="lg">
-        <Typography variant="h4" sx={{ color: '#1a3a6b', mb: 4, textAlign: 'center', fontWeight: 700 }}>Venue Specifications</Typography>
+        <Typography variant="h4" sx={{ color: '#50175d', mb: 4, textAlign: 'center', fontWeight: 700 }}>Venue Specifications</Typography>
         <Grid container spacing={3}>
           {[
             { label: 'Main Hall',       capacity: '500 persons', area: '5000 sq.ft', floor: 'Ground Floor' },
@@ -165,7 +165,7 @@ export const AboutVenuePage: React.FC = () => (
             { label: 'VIP Lounge',      capacity: '20 persons',  area: '400 sq.ft',  floor: 'First Floor'  },
           ].map((v) => (
             <Grid item xs={12} md={4} key={v.label}>
-              <Paper sx={{ p: 3, borderRadius: 2, borderTop: '4px solid #1a3a6b' }}>
+              <Paper sx={{ p: 3, borderRadius: 2, borderTop: '4px solid #50175d' }}>
                 <Typography variant="h6" fontWeight={700} color="primary.main" gutterBottom>{v.label}</Typography>
                 <Divider sx={{ mb: 2 }} />
                 {[['Capacity', v.capacity], ['Area', v.area], ['Floor', v.floor]].map(([k, val]) => (
@@ -183,8 +183,8 @@ export const AboutVenuePage: React.FC = () => (
 
     <Box sx={{ py: 8, bgcolor: '#fff' }}>
       <Container maxWidth="lg">
-        <Typography variant="h4" sx={{ color: '#1a3a6b', mb: 4, textAlign: 'center', fontWeight: 700 }}>Rules &amp; Regulations</Typography>
-        <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 2, borderTop: '4px solid #c9a227' }}>
+        <Typography variant="h4" sx={{ color: '#50175d', mb: 4, textAlign: 'center', fontWeight: 700 }}>Rules &amp; Regulations</Typography>
+        <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 2, borderTop: '4px solid #b45490' }}>
           <Grid container spacing={1.5}>
             {[
               'Booking must be made at least 7 days in advance.',
@@ -198,7 +198,7 @@ export const AboutVenuePage: React.FC = () => (
             ].map((rule) => (
               <Grid item xs={12} md={6} key={rule}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#c9a227', mt: 0.9, flexShrink: 0 }} />
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#b45490', mt: 0.9, flexShrink: 0 }} />
                   <Typography variant="body2" color="text.secondary">{rule}</Typography>
                 </Box>
               </Grid>
@@ -208,13 +208,13 @@ export const AboutVenuePage: React.FC = () => (
       </Container>
     </Box>
 
-    <Box sx={{ py: 8, bgcolor: '#f5f7fa' }}>
+    <Box sx={{ py: 8, bgcolor: '#fbf6fa' }}>
       <Container maxWidth="lg">
-        <Typography variant="h4" sx={{ color: '#1a3a6b', mb: 4, textAlign: 'center', fontWeight: 700 }}>Cancellation &amp; Refund Policy</Typography>
+        <Typography variant="h4" sx={{ color: '#50175d', mb: 4, textAlign: 'center', fontWeight: 700 }}>Cancellation &amp; Refund Policy</Typography>
         <Paper sx={{ borderRadius: 2, overflow: 'hidden', maxWidth: 800, mx: 'auto' }}>
           <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
             <Box component="thead">
-              <Box component="tr" sx={{ bgcolor: '#1a3a6b' }}>
+              <Box component="tr" sx={{ bgcolor: '#50175d' }}>
                 <Box component="th" sx={{ color: '#fff', textAlign: 'left', p: 2, fontWeight: 700, fontSize: '0.9rem' }}>
                   Cancellation Time
                 </Box>
@@ -263,7 +263,7 @@ export const ContactPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ bgcolor: '#1a3a6b', py: 8, textAlign: 'center' }}>
+      <Box sx={{ background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', py: 8, textAlign: 'center' }}>
         <Container maxWidth="md">
           <Typography variant="h3" sx={{ color: '#fff', fontWeight: 800 }}>Contact Us</Typography>
           <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)', mt: 2, fontWeight: 400 }}>
@@ -272,7 +272,7 @@ export const ContactPage: React.FC = () => {
         </Container>
       </Box>
 
-      <Box sx={{ py: 8, bgcolor: '#f5f7fa' }}>
+      <Box sx={{ py: 8, bgcolor: '#fbf6fa' }}>
         <Container maxWidth="lg">
           <Grid container spacing={5}>
             <Grid item xs={12} md={5}>
@@ -290,7 +290,7 @@ export const ContactPage: React.FC = () => {
                   </Box>
                 </Box>
               ))}
-              <Box sx={{ bgcolor: '#e8f0fe', p: 2, borderRadius: 2, borderLeft: '4px solid #1a3a6b', mt: 2 }}>
+              <Box sx={{ bgcolor: '#f4eaf3', p: 2, borderRadius: 2, borderLeft: '4px solid #50175d', mt: 2 }}>
                 <Typography variant="body2" fontWeight={600} color="primary.main">Office Hours</Typography>
                 <Typography variant="body2" color="text.secondary">Monday – Saturday: 10:00 AM – 6:00 PM</Typography>
                 <Typography variant="body2" color="text.secondary">Sunday & Holidays: Closed</Typography>
@@ -389,7 +389,7 @@ export const GalleryPage: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ bgcolor: '#1a3a6b', py: 8, textAlign: 'center' }}>
+      <Box sx={{ background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', py: 8, textAlign: 'center' }}>
         <Container maxWidth="md">
           <Typography variant="h3" sx={{ color: '#fff', fontWeight: 800 }}>Gallery</Typography>
           <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)', mt: 2, fontWeight: 400 }}>
@@ -398,7 +398,7 @@ export const GalleryPage: React.FC = () => {
         </Container>
       </Box>
 
-      <Box sx={{ py: 6, bgcolor: '#f5f7fa' }}>
+      <Box sx={{ py: 6, bgcolor: '#fbf6fa' }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', gap: 2, mb: 4, justifyContent: 'center' }}>
             {(['photos', 'videos'] as const).map((t) => (

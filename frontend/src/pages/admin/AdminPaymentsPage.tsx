@@ -153,7 +153,7 @@ const AdminPaymentsPage: React.FC = () => {
 
       {/* Verify Payment Dialog */}
       <Dialog open={verifyOpen} onClose={() => setVerifyOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>
           Verify Payment — {selectedBooking?.bookingNumber}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>

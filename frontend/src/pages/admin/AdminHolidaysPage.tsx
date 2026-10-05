@@ -43,7 +43,7 @@ const AdminHolidaysPage: React.FC = () => {
       }
       setOpen(false);
       load();
-    } catch { toast.error('Operation failed'); }
+    } catch { toast.error('Transaction failed'); }
   };
 
   const handleDelete = async (id: number) => {
@@ -105,7 +105,7 @@ const AdminHolidaysPage: React.FC = () => {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>
           {editing ? 'Edit Holiday' : 'Add Holiday'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>

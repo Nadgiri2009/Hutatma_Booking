@@ -33,7 +33,7 @@ const StatCard: React.FC<StatCard> = ({ label, value, icon, color, bg, onClick }
     onKeyDown={onClick ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick(); } } : undefined}
     role={onClick ? 'button' : undefined}
     tabIndex={onClick ? 0 : undefined}
-    sx={{ height: '100%', position: 'relative', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default', '&:focus-visible': { outline: '2px solid #1a3a6b', outlineOffset: 2 } }}
+    sx={{ height: '100%', position: 'relative', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default', '&:focus-visible': { outline: '2px solid #50175d', outlineOffset: 2 } }}
   >
     <CardContent sx={{ p: 2.5 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -82,15 +82,14 @@ const AdminDashboard: React.FC = () => {
   );
 
   const stats: Array<StatCard & { path?: string }> = [
-    { label: 'Total Bookings',    value: data?.totalBookings          || 0, icon: <ConfirmationNumber />, color: '#1a3a6b', bg: 'rgba(26,58,107,0.12)'  },
+    { label: 'Total Bookings',    value: data?.totalBookings          || 0, icon: <ConfirmationNumber />, color: '#50175d', bg: 'rgba(80,23,93,0.12)'  },
     { label: 'Payment Pending',  value: data?.pendingPaymentBookings || 0, icon: <HourglassEmpty />,    color: '#ed6c02', bg: 'rgba(237,108,2,0.12)'   },
     { label: 'Confirmed',         value: data?.confirmedBookings      || 0, icon: <CheckCircle />,       color: '#2e7d32', bg: 'rgba(46,125,50,0.12)'   },
     { label: 'Cancelled',         value: data?.cancelledBookings      || 0, icon: <Report />,            color: '#5a6a7e', bg: 'rgba(90,106,126,0.12)'  },
     { label: 'Refund',            value: refundCount,                    icon: <AssignmentReturn />,  color: '#0288d1', bg: 'rgba(2,136,209,0.12)', path: '/admin/refunds' },
     { label: 'Total Revenue',     value: `₹${(data?.totalRevenue || 0).toLocaleString('en-IN')}`,
-                                                                       icon: <AttachMoney />,       color: '#c9a227', bg: 'rgba(201,162,39,0.12)'  },
+                                                                       icon: <AttachMoney />,       color: '#b45490', bg: 'rgba(180,84,144,0.12)'  },
   ];
-
   return (
     <Box>
       {/* Header */}

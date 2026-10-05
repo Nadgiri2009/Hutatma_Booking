@@ -3,6 +3,7 @@ using HutatmaBooking.API.DTOs;
 using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace HutatmaBooking.API.Repositories;
 
@@ -52,11 +53,15 @@ public class BookingRepository : IBookingRepository
         var toDate   = DateOnly.FromDateTime(to);
         return await _db.Bookings
             .Where(b => b.VenueId == venueId
-                     && b.Status != "Cancelled"
                      && b.FromDate <= toDate
                      && b.ToDate   >= fromDate)
             .ToListAsync();
     }
+
+    public async Task<VenueMaster?> GetVenueCapacityAsync(int venueId) =>
+        await _db.VenueMaster
+            .Where(venue => venue.VenueId == venueId)
+            .FirstOrDefaultAsync();
 
     public async Task<VenuePricing?> GetVenuePricingAsync(int venuePricingId) =>
         await _db.VenuePricing.Include(p => p.Venue).FirstOrDefaultAsync(p => p.Id == venuePricingId);
@@ -101,9 +106,28 @@ public class BookingRepository : IBookingRepository
         var strategy = _db.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
-            using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                var venue = await GetVenueCapacityAsync(booking.VenueId);
+                if (venue == null || venue.MorningBookingCapacity <= 0 || venue.EveningBookingCapacity <= 0)
+                    throw new InvalidOperationException("Booking capacity is not configured for the selected venue.");
+
+                var existingBookings = await _db.Bookings
+                    .Where(existing => existing.VenueId == booking.VenueId
+                        && existing.Status != "Cancelled"
+                        && existing.FromDate <= booking.ToDate
+                        && existing.ToDate >= booking.FromDate)
+                    .ToListAsync();
+                if (HasCapacityConflict(
+                    existingBookings,
+                    booking.FromDate,
+                    booking.ToDate,
+                    booking.Session,
+                    venue.MorningBookingCapacity,
+                    venue.EveningBookingCapacity))
+                    throw new InvalidOperationException("Selected session has reached its booking capacity for one or more dates.");
+
                 _db.Bookings.Add(booking);
                 await _db.SaveChangesAsync();
 
@@ -152,6 +176,35 @@ public class BookingRepository : IBookingRepository
 
     public async Task<int> GetCountForYearAsync(int year) =>
         await _db.Bookings.CountAsync(b => b.CreatedAt.Year == year);
+
+    private static bool HasCapacityConflict(
+        IEnumerable<Booking> bookings,
+        DateOnly fromDate,
+        DateOnly toDate,
+        string session,
+        int morningCapacity,
+        int eveningCapacity)
+    {
+        var activeBookings = bookings.Where(booking => booking.Status != "Cancelled").ToList();
+        if (activeBookings.Any(booking => booking.Session.Equals("FullDay", StringComparison.OrdinalIgnoreCase)))
+            return true;
+        if (session.Equals("FullDay", StringComparison.OrdinalIgnoreCase))
+            return activeBookings.Count > 0;
+
+        var capacity = session.Equals("Morning", StringComparison.OrdinalIgnoreCase)
+            ? morningCapacity
+            : eveningCapacity;
+
+        for (var date = fromDate; date <= toDate; date = date.AddDays(1))
+        {
+            var bookingsForSession = activeBookings.Count(booking =>
+                booking.Session.Equals(session, StringComparison.OrdinalIgnoreCase)
+                && booking.FromDate <= date
+                && booking.ToDate >= date);
+            if (bookingsForSession >= capacity) return true;
+        }
+        return false;
+    }
 }
 
 public class UserRepository : IUserRepository

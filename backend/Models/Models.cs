@@ -34,6 +34,8 @@ public class VenueMaster
     [MaxLength(150)] public string VenueName { get; set; } = "";
     public string? Description { get; set; }
     public int? Capacity { get; set; }
+    public int MorningBookingCapacity { get; set; } = 30;
+    public int EveningBookingCapacity { get; set; } = 30;
     [MaxLength(200)] public string? Location { get; set; }
     [MaxLength(30)] public string Status { get; set; } = "Active";
     public int DisplayOrder { get; set; }
@@ -324,6 +326,17 @@ public class AdminLoginOtp
 }
 
 public class RefundOtpChallenge
+{
+    [Key] public int BookingId { get; set; }
+    [MaxLength(15)] public string Mobile { get; set; } = "";
+    [MaxLength(32)] public byte[] OtpHash { get; set; } = Array.Empty<byte>();
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    public int FailedAttempts { get; set; }
+    public DateTime? UsedAt { get; set; }
+}
+
+public class CancellationOtpChallenge
 {
     [Key] public int BookingId { get; set; }
     [MaxLength(15)] public string Mobile { get; set; } = "";

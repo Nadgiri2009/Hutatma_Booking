@@ -12,10 +12,12 @@ import AdminLayout  from './components/layout/AdminLayout';
 import HomePage    from './pages/public/HomePage';
 import BookingPage from './pages/public/BookingPage';
 import RefundApplicationPage from './pages/public/RefundApplicationPage';
+import CancellationApplicationPage from './pages/public/CancellationApplicationPage';
 import TrackRefundPage from './pages/public/TrackRefundPage';
 import { AboutVenuePage, ContactPage, GalleryPage, PrintBookingPage } from './pages/public/PublicPages';
 import AdminLoginPage    from './pages/admin/AdminLoginPage';
 import AdminDashboard    from './pages/admin/AdminDashboard';
+import AdminSlotAvailabilityPage from './pages/admin/AdminSlotAvailabilityPage';
 import AdminBookingsPage from './pages/admin/AdminBookingsPage';
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
 import AdminVenuesPage   from './pages/admin/AdminVenuesPage';
@@ -44,6 +46,7 @@ const AppRoutes: React.FC = () => (
       <Route path="/contact"       element={<ContactPage />} />
       <Route path="/print-booking" element={<PrintBookingPage />} />
       <Route path="/refunds"       element={<RefundApplicationPage />} />
+      <Route path="/cancel-booking" element={<CancellationApplicationPage />} />
       <Route path="/track-refund" element={<TrackRefundPage />} />
       <Route path="/book"          element={<BookingPage />} />
     </Route>
@@ -51,6 +54,7 @@ const AppRoutes: React.FC = () => (
     <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
       <Route index               element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="dashboard"    element={<AdminDashboard />} />
+      <Route path="slot-availability" element={<AdminSlotAvailabilityPage />} />
       <Route path="bookings"     element={<AdminBookingsPage />} />
       <Route path="payments"     element={<AdminPaymentsPage />} />
       <Route path="venues"       element={<AdminVenuesPage />} />

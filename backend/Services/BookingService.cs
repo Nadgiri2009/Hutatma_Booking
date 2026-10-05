@@ -46,6 +46,10 @@ public class BookingService : IBookingService
 
     public async Task<AvailabilityResponseDto> CheckAvailabilityAsync(AvailabilityRequestDto req)
     {
+        var venue = await _bookingRepo.GetVenueCapacityAsync(req.VenueId);
+        if (venue == null || venue.MorningBookingCapacity <= 0 || venue.EveningBookingCapacity <= 0)
+            throw new InvalidOperationException("Booking capacity is not configured for the selected venue.");
+
         var existingBookings = await _bookingRepo.GetBookingsForDateRangeAsync(
             req.VenueId, req.FromDate, req.ToDate);
 
@@ -57,17 +61,57 @@ public class BookingService : IBookingService
                 .Where(b => b.FromDate <= day && b.ToDate >= day)
                 .ToList();
 
-            var fullDayTaken = bookingsForDay.Any(b => b.Session == "FullDay");
-            var morningTaken = fullDayTaken || bookingsForDay.Any(b => b.Session == "Morning");
-            var eveningTaken = fullDayTaken || bookingsForDay.Any(b => b.Session == "Evening");
-            var anyTaken     = fullDayTaken || morningTaken || eveningTaken;
+            var activeBookings = bookingsForDay.Where(b => b.Status != "Cancelled").ToList();
+            var fullDayTaken = activeBookings.Any(b => b.Session.Equals("FullDay", StringComparison.OrdinalIgnoreCase));
+            var morningBookingCount = activeBookings.Count(b => b.Session.Equals("Morning", StringComparison.OrdinalIgnoreCase));
+            var eveningBookingCount = activeBookings.Count(b => b.Session.Equals("Evening", StringComparison.OrdinalIgnoreCase));
+            var morningTaken = fullDayTaken || morningBookingCount >= venue.MorningBookingCapacity;
+            var eveningTaken = fullDayTaken || eveningBookingCount >= venue.EveningBookingCapacity;
+            var fullDayUnavailable = activeBookings.Count > 0;
+            var morningBookedSlots = fullDayTaken ? venue.MorningBookingCapacity : morningBookingCount;
+            var eveningBookedSlots = fullDayTaken ? venue.EveningBookingCapacity : eveningBookingCount;
+            var bookedSlots = morningBookedSlots + eveningBookedSlots;
+            var sessions = new List<SessionAvailabilityDto>
+            {
+                new()
+                {
+                    Session = "Morning",
+                    TotalSlots = venue.MorningBookingCapacity,
+                    BookedSlots = morningBookedSlots,
+                    AvailableSlots = fullDayTaken ? 0 : Math.Max(0, venue.MorningBookingCapacity - morningBookingCount),
+                    Status = morningTaken ? "Full" : morningBookingCount > 0 ? "Partially Booked" : "Available",
+                },
+                new()
+                {
+                    Session = "Evening",
+                    TotalSlots = venue.EveningBookingCapacity,
+                    BookedSlots = eveningBookedSlots,
+                    AvailableSlots = fullDayTaken ? 0 : Math.Max(0, venue.EveningBookingCapacity - eveningBookingCount),
+                    Status = eveningTaken ? "Full" : eveningBookingCount > 0 ? "Partially Booked" : "Available",
+                },
+                new()
+                {
+                    Session = "FullDay",
+                    TotalSlots = 1,
+                    BookedSlots = fullDayTaken ? 1 : 0,
+                    AvailableSlots = fullDayUnavailable ? 0 : 1,
+                    Status = fullDayTaken ? "Full" : fullDayUnavailable ? "Unavailable" : "Available",
+                },
+            };
+            var totalSlots = venue.MorningBookingCapacity + venue.EveningBookingCapacity;
+            var availableSlots = totalSlots - bookedSlots;
 
             dateSlots.Add(new DateSlotDto
             {
                 Date          = d,
                 MorningStatus = morningTaken ? "Booked" : "Available",
                 EveningStatus = eveningTaken ? "Booked" : "Available",
-                FullDayStatus = anyTaken     ? "Booked" : "Available",
+                FullDayStatus = fullDayUnavailable ? "Booked" : "Available",
+                TotalSlots    = totalSlots,
+                BookedSlots   = bookedSlots,
+                AvailableSlots = availableSlots,
+                CancelledBookingCount = bookingsForDay.Count(b => b.Status == "Cancelled"),
+                Sessions      = sessions,
             });
         }
         return new AvailabilityResponseDto { Slots = dateSlots };
@@ -82,16 +126,28 @@ public class BookingService : IBookingService
 
     public async Task<bool> HasConflictAsync(int venueId, DateOnly fromDate, DateOnly toDate, string session)
     {
+        var venue = await _bookingRepo.GetVenueCapacityAsync(venueId);
+        if (venue == null || venue.MorningBookingCapacity <= 0 || venue.EveningBookingCapacity <= 0) return true;
         var existing = await _bookingRepo.GetBookingsForDateRangeAsync(
             venueId, fromDate.ToDateTime(TimeOnly.MinValue), toDate.ToDateTime(TimeOnly.MaxValue));
+        var activeBookings = existing.Where(booking => booking.Status != "Cancelled").ToList();
+        if (activeBookings.Any(booking => booking.Session.Equals("FullDay", StringComparison.OrdinalIgnoreCase)))
+            return true;
+        if (session.Equals("FullDay", StringComparison.OrdinalIgnoreCase))
+            return activeBookings.Count > 0;
 
-        // Any status other than Cancelled instantly locks the date/session —
-        // bookings lock the calendar as soon as they're submitted, before
-        // payment is verified, so two applicants can't be confirmed for the
-        // same slot.
-        return existing
-            .Where(b => b.Status != "Cancelled")
-            .Any(b => b.Session == "FullDay" || session == "FullDay" || b.Session == session);
+        for (var date = fromDate; date <= toDate; date = date.AddDays(1))
+        {
+            var bookingsForSession = activeBookings.Count(booking =>
+                booking.Session.Equals(session, StringComparison.OrdinalIgnoreCase)
+                && booking.FromDate <= date
+                && booking.ToDate >= date);
+            var capacity = session.Equals("Morning", StringComparison.OrdinalIgnoreCase)
+                ? venue.MorningBookingCapacity
+                : venue.EveningBookingCapacity;
+            if (bookingsForSession >= capacity) return true;
+        }
+        return false;
     }
 
     // ─── SUMMARY CALCULATION ─────────────────────────────────────────────────

@@ -202,7 +202,7 @@ const AdminBookingsPage: React.FC = () => {
 
       {/* Detail Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Booking Details — {selected?.bookingNumber}</span>
           <IconButton onClick={() => setDialogOpen(false)} size="small" sx={{ color: '#fff' }}>
             <Close />

@@ -192,6 +192,8 @@ public class VenuesController : ControllerBase
                 VenueName = v.VenueName,
                 Description = v.Description,
                 Capacity = v.Capacity,
+                MorningBookingCapacity = v.MorningBookingCapacity,
+                EveningBookingCapacity = v.EveningBookingCapacity,
                 Location = v.Location,
                 Status = v.Status,
                 Pricing = v.Pricing
@@ -249,6 +251,50 @@ public class VenuesController : ControllerBase
             EffectiveFrom = pricing.EffectiveFrom,
             EffectiveTo = pricing.EffectiveTo
         });
+    }
+
+    [Authorize(Policy = "AdminOnly")]
+    [HttpPut("{id:int}/booking-capacity")]
+    public async Task<IActionResult> UpdateBookingCapacity(int id, [FromBody] VenueBookingCapacityUpdateDto dto)
+    {
+        var session = dto.Session?.Trim();
+        if (session is not ("Morning" or "Evening"))
+            return BadRequest(new { error = "Only Morning and Evening capacities can be changed. Full Day remains exclusive under the existing booking rules." });
+        if (dto.Capacity < 1)
+            return BadRequest(new { error = "Booking capacity must be at least one." });
+
+        var venue = await _db.VenueMaster.FindAsync(id);
+        if (venue == null || venue.Status == "Removed") return NotFound();
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var activeBookings = await _db.Bookings.AsNoTracking()
+            .Where(booking => booking.VenueId == id
+                && booking.Status != "Cancelled"
+                && (booking.Session == session || booking.Session == "FullDay")
+                && booking.ToDate >= today)
+            .Select(booking => new { booking.FromDate, booking.ToDate })
+            .ToListAsync();
+        var maximumBookedOnDate = activeBookings
+            .Select(booking => booking.FromDate < today ? today : booking.FromDate)
+            .Distinct()
+            .Select(date => activeBookings.Count(booking => booking.FromDate <= date && booking.ToDate >= date))
+            .DefaultIfEmpty(0)
+            .Max();
+        if (dto.Capacity < maximumBookedOnDate)
+            return Conflict(new { error = $"Capacity cannot be less than the number of existing bookings ({maximumBookedOnDate})." });
+
+        var oldCapacity = session == "Morning" ? venue.MorningBookingCapacity : venue.EveningBookingCapacity;
+        if (session == "Morning") venue.MorningBookingCapacity = dto.Capacity;
+        else venue.EveningBookingCapacity = dto.Capacity;
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(
+            "BookingCapacityUpdated",
+            "VenueMaster",
+            venue.VenueId,
+            JsonSerializer.Serialize(new { Session = session, Capacity = oldCapacity }),
+            JsonSerializer.Serialize(new { Session = session, Capacity = dto.Capacity }));
+
+        return Ok(new { venue.VenueId, Session = session, Capacity = dto.Capacity });
     }
 
     [Authorize(Policy = "AdminOnly")]
@@ -411,10 +457,18 @@ public class VenueListDto
 
 public class VenueDetailsDto : VenueListDto
 {
+    public int MorningBookingCapacity { get; set; } = 30;
+    public int EveningBookingCapacity { get; set; } = 30;
     public new List<VenueFacilityDto> Facilities { get; set; } = new();
     public List<VenueImageDto> Images { get; set; } = new();
     public List<VenueRuleDto> Rules { get; set; } = new();
     public List<VenuePricingDto> Pricing { get; set; } = new();
+}
+
+public class VenueBookingCapacityUpdateDto
+{
+    public string Session { get; set; } = "";
+    public int Capacity { get; set; }
 }
 
 public class VenueFacilityDto

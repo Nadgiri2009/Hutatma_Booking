@@ -188,7 +188,7 @@ const HomePage: React.FC = () => {
               onClick={() => setCurrentSlide(i)}
               sx={{
                 width: i === currentSlide ? 28 : 8, height: 8, borderRadius: 4,
-                bgcolor: i === currentSlide ? '#c9a227' : 'rgba(255,255,255,0.5)',
+                bgcolor: i === currentSlide ? '#d68db8' : 'rgba(255,255,255,0.5)',
                 cursor: 'pointer', transition: 'all 0.3s ease',
               }}
             />
@@ -201,7 +201,7 @@ const HomePage: React.FC = () => {
         <Box sx={{ bgcolor: '#fff3cd', py: 1.5, borderBottom: '1px solid #ffc107' }}>
           <Container maxWidth="lg">
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto' }}>
-              <NotificationsActive sx={{ color: '#c9a227', flexShrink: 0 }} />
+              <NotificationsActive sx={{ color: '#b45490', flexShrink: 0 }} />
               <Typography variant="body2" sx={{ fontWeight: 600, color: '#856404', flexShrink: 0 }}>
                 NOTICES:
               </Typography>
@@ -218,18 +218,18 @@ const HomePage: React.FC = () => {
       )}
 
       {/* ── QUICK STATS ───────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: '#1a3a6b', py: 4 }}>
+      <Box sx={{ background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', py: 4 }}>
         <Container maxWidth="lg">
           <Grid container spacing={3} justifyContent="center">
             <Grid item xs={6} md={3}>
               <Box textAlign="center">
-                <Typography variant="h3" sx={{ color: '#c9a227', fontWeight: 800 }}>{activeVenues.length}</Typography>
+                <Typography variant="h3" sx={{ color: '#f0c7df', fontWeight: 800 }}>{activeVenues.length}</Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 0.5 }}>Venues Available</Typography>
               </Box>
             </Grid>
             <Grid item xs={6} md={3}>
               <Box textAlign="center">
-                <Typography variant="h3" sx={{ color: '#c9a227', fontWeight: 800 }}>
+                <Typography variant="h3" sx={{ color: '#f0c7df', fontWeight: 800 }}>
                   {totalCapacity > 0 ? totalCapacity.toLocaleString('en-IN') : '-'}
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 0.5 }}>Total Capacity</Typography>
@@ -237,13 +237,13 @@ const HomePage: React.FC = () => {
             </Grid>
             <Grid item xs={6} md={3}>
               <Box textAlign="center">
-                <Typography variant="h3" sx={{ color: '#c9a227', fontWeight: 800 }}>{facilityNames.length}</Typography>
+                <Typography variant="h3" sx={{ color: '#f0c7df', fontWeight: 800 }}>{facilityNames.length}</Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 0.5 }}>Facilities Listed</Typography>
               </Box>
             </Grid>
             <Grid item xs={6} md={3}>
                 <Box textAlign="center">
-                <Typography variant="h3" sx={{ color: '#c9a227', fontWeight: 800 }}>API</Typography>
+                <Typography variant="h3" sx={{ color: '#f0c7df', fontWeight: 800 }}>API</Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 0.5 }}>Dynamic Master Data</Typography>
                 </Box>
             </Grid>
@@ -252,12 +252,12 @@ const HomePage: React.FC = () => {
       </Box>
 
       {/* ── FEATURES ──────────────────────────────────────────────────────── */}
-      <Box sx={{ py: 8, bgcolor: '#f5f7fa' }}>
+      <Box sx={{ py: 8, bgcolor: '#fbf6fa' }}>
         <Container maxWidth="lg">
           <Box textAlign="center" mb={6}>
-            <Typography variant="overline" sx={{ color: '#c9a227', fontWeight: 700, letterSpacing: 2 }}>WHY CHOOSE US</Typography>
-            <Typography variant="h3" sx={{ color: '#1a3a6b', mt: 1 }}>Why Book with Us</Typography>
-            <Typography variant="body1" sx={{ color: '#5a6a7e', mt: 1, maxWidth: 500, mx: 'auto' }}>
+            <Typography variant="overline" sx={{ color: '#b45490', fontWeight: 700, letterSpacing: 2 }}>WHY CHOOSE US</Typography>
+            <Typography variant="h3" sx={{ color: '#50175d', mt: 1 }}>Why Book with Us</Typography>
+            <Typography variant="body1" sx={{ color: '#715f75', mt: 1, maxWidth: 500, mx: 'auto' }}>
               A trusted government institution providing transparent and hassle-free venue booking
             </Typography>
           </Box>
@@ -266,7 +266,7 @@ const HomePage: React.FC = () => {
               <Grid item xs={12} sm={6} md={3} key={f.title}>
                 <Card sx={{ height: '100%', textAlign: 'center', p: 2, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
                   <CardContent>
-                    <Avatar sx={{ bgcolor: '#1a3a6b', width: 60, height: 60, mx: 'auto', mb: 2 }}>
+                    <Avatar sx={{ bgcolor: '#50175d', width: 60, height: 60, mx: 'auto', mb: 2 }}>
                       {f.icon}
                     </Avatar>
                     <Typography variant="h6" gutterBottom>{f.title}</Typography>
@@ -284,8 +284,8 @@ const HomePage: React.FC = () => {
         <Container maxWidth="lg">
           <Grid container spacing={4} alignItems="center">
             <Grid item xs={12} md={6}>
-              <Typography variant="overline" sx={{ color: '#c9a227', fontWeight: 700, letterSpacing: 2 }}>FACILITIES</Typography>
-              <Typography variant="h3" sx={{ color: '#1a3a6b', mt: 1, mb: 2 }}>World-Class Amenities</Typography>
+              <Typography variant="overline" sx={{ color: '#b45490', fontWeight: 700, letterSpacing: 2 }}>FACILITIES</Typography>
+              <Typography variant="h3" sx={{ color: '#50175d', mt: 1, mb: 2 }}>World-Class Amenities</Typography>
               <Typography variant="body1" color="text.secondary" mb={3}>
                 Our venue is equipped with modern facilities to make your event a grand success.
                 From air-conditioning to high-speed internet, we've got everything covered.
@@ -322,7 +322,7 @@ const HomePage: React.FC = () => {
       </Box>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <Box sx={{ py: 8, background: 'linear-gradient(135deg, #1a3a6b 0%, #2d5ea8 100%)', textAlign: 'center' }}>
+      <Box sx={{ py: 8, background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', textAlign: 'center' }}>
         <Container maxWidth="md">
           <Typography variant="h3" sx={{ color: '#fff', mb: 2, fontWeight: 700 }}>
             Ready to Book Your Event?
@@ -351,9 +351,9 @@ const HomePage: React.FC = () => {
       </Box>
 
       <Dialog open={termsOpen} onClose={closeTerms} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>नियम व अटी</DialogTitle>
+        <DialogTitle sx={{ background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', color: '#fff' }}>नियम व अटी</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body1" sx={{ mb: 2, color: '#1a3a6b', fontWeight: 700 }}>
+          <Typography variant="body1" sx={{ mb: 2, color: '#50175d', fontWeight: 700 }}>
             कृपया खालील नियम आणि अटी वाचा आणि स्वीकारा.
           </Typography>
           <List disablePadding>
@@ -382,11 +382,11 @@ const HomePage: React.FC = () => {
       </Dialog>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: '#0f2340', py: 4 }}>
+      <Box sx={{ background: 'linear-gradient(110deg, #48145e 0%, #351044 100%)', py: 4 }}>
         <Container maxWidth="lg">
           <Grid container spacing={3} justifyContent="space-between">
             <Grid item xs={12} md={4}>
-              <Typography variant="h6" sx={{ color: '#c9a227', mb: 1 }}>Hutatma Smruti Mandir</Typography>
+              <Typography variant="h6" sx={{ color: '#f0c7df', mb: 1 }}>Hutatma Smruti Mandir</Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
                 A premier venue facility managed under public trust, dedicated to serving the community with excellence and integrity.
               </Typography>
@@ -394,7 +394,7 @@ const HomePage: React.FC = () => {
             <Grid item xs={12} md={3}>
               <Typography variant="subtitle1" sx={{ color: '#fff', mb: 1, fontWeight: 600 }}>Quick Links</Typography>
               {['Home', 'About Venue', 'Gallery', 'Contact Us', 'Book Now'].map((l) => (
-                <Typography key={l} variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mb: 0.5, cursor: 'pointer', '&:hover': { color: '#c9a227' } }}>
+                <Typography key={l} variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mb: 0.5, cursor: 'pointer', '&:hover': { color: '#f0c7df' } }}>
                   {l}
                 </Typography>
               ))}
@@ -410,7 +410,7 @@ const HomePage: React.FC = () => {
                 href="https://www.google.com/maps/search/?api=1&query=Hutatma+Chowk,+Solapur,+Maharashtra+413001"
                 target="_blank"
                 rel="noopener noreferrer"
-                sx={{ color: '#c9a227', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                sx={{ color: '#f0c7df', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 🗺 View on Google Maps
               </Typography>

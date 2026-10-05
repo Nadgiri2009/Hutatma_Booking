@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon, Dashboard, ConfirmationNumber, Apartment,
-  CurrencyRupee, Event, PhotoLibrary, Notifications, People,
+  CurrencyRupee, Event, EventAvailable, PhotoLibrary, Notifications, People,
   Report, Cancel, Print, ExpandLess, ExpandMore, Logout,
   AccountCircle, Settings, ChevronLeft,
   AssignmentReturn, History,
@@ -25,6 +25,7 @@ const navSections = [
     items: [
       { label: 'Dashboard',   icon: <Dashboard />,          path: '/admin/dashboard'   },
       { label: 'Bookings',    icon: <ConfirmationNumber />,  path: '/admin/bookings'    },
+      { label: 'Slot Availability', icon: <EventAvailable />, path: '/admin/slot-availability' },
       { label: 'Payments',    icon: <CurrencyRupee />,       path: '/admin/payments'    },
     ],
   },
@@ -38,7 +39,7 @@ const navSections = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'Transactions',
     items: [
       { label: 'Complaints',  icon: <Report />,              path: '/admin/complaints'  },
       { label: 'Cancellations', icon: <Cancel />,            path: '/admin/cancellations' },
@@ -78,11 +79,11 @@ const AdminLayout: React.FC = () => {
         sx={{
           p: 2.5,
           display: 'flex', alignItems: 'center', gap: 1.5,
-          background: 'linear-gradient(135deg, #0f2340 0%, #1a3a6b 100%)',
+          background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)',
           minHeight: 72,
         }}
       >
-        <Avatar sx={{ bgcolor: '#c9a227', width: 40, height: 40, fontSize: '1rem', fontWeight: 800 }}>
+        <Avatar sx={{ bgcolor: '#b45490', width: 40, height: 40, fontSize: '1rem', fontWeight: 800 }}>
           HSM
         </Avatar>
         {open && (
@@ -121,10 +122,10 @@ const AdminLayout: React.FC = () => {
                       borderRadius: 1.5,
                       minHeight: 44,
                       '&.Mui-selected': {
-                        bgcolor: 'rgba(26,58,107,0.12)',
-                        color: '#1a3a6b',
-                        '& .MuiListItemIcon-root': { color: '#1a3a6b' },
-                        '&:hover': { bgcolor: 'rgba(26,58,107,0.16)' },
+                        bgcolor: 'rgba(180,84,144,0.12)',
+                        color: '#50175d',
+                        '& .MuiListItemIcon-root': { color: '#50175d' },
+                        '&:hover': { bgcolor: 'rgba(180,84,144,0.16)' },
                       },
                       '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' },
                     }}
@@ -132,7 +133,7 @@ const AdminLayout: React.FC = () => {
                     <ListItemIcon
                       sx={{
                         minWidth: open ? 40 : 'unset',
-                        color: isActive(item.path) ? '#1a3a6b' : '#64748b',
+                        color: isActive(item.path) ? '#50175d' : '#64748b',
                         justifyContent: 'center',
                       }}
                     >
@@ -164,7 +165,7 @@ const AdminLayout: React.FC = () => {
           bgcolor: '#f8fafc',
         }}
       >
-        <Avatar sx={{ bgcolor: '#1a3a6b', width: 36, height: 36, fontSize: '0.85rem' }}>
+        <Avatar sx={{ bgcolor: '#50175d', width: 36, height: 36, fontSize: '0.85rem' }}>
           {auth.fullName?.charAt(0) || 'A'}
         </Avatar>
         {open && (
@@ -185,7 +186,7 @@ const AdminLayout: React.FC = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f5f7fa' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#fbf6fa' }}>
       {/* Sidebar */}
       {isMobile ? (
         <Drawer
@@ -232,19 +233,29 @@ const AdminLayout: React.FC = () => {
           }}
         >
           <Toolbar sx={{ px: { xs: 1.5, sm: 2 }, minHeight: { xs: 56, sm: 64 } }}>
-            <IconButton aria-label="Toggle navigation" onClick={() => setOpen((v) => !v)} sx={{ mr: { xs: 0.5, sm: 1 }, color: '#1a3a6b', flexShrink: 0 }}>
+            <IconButton aria-label="Toggle navigation" onClick={() => setOpen((v) => !v)} sx={{ mr: { xs: 0.5, sm: 1 }, color: '#50175d', flexShrink: 0 }}>
               <MenuIcon />
             </IconButton>
             <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ flex: 1, minWidth: 0, fontSize: { xs: '0.82rem', sm: '1rem', md: '1.15rem' }, lineHeight: 1.25 }}>
               Hutatma Smruti Mandir — Admin
             </Typography>
-            <IconButton
-              aria-label="Account menu"
-              onClick={(e) => setAnchorEl(e.currentTarget)}
-              sx={{ color: '#1a3a6b' }}
-            >
-              <AccountCircle />
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, maxWidth: { xs: 118, sm: 240 } }}>
+              <Box sx={{ minWidth: 0, textAlign: 'right' }}>
+                <Typography variant="body2" fontWeight={600} noWrap sx={{ color: '#fff', fontSize: { xs: '0.72rem', sm: '0.875rem' } }}>
+                  {auth.fullName || 'Admin'}
+                </Typography>
+                <Typography variant="caption" noWrap sx={{ color: 'rgba(255,255,255,0.78)', display: { xs: 'none', sm: 'block' } }}>
+                  {auth.role}
+                </Typography>
+              </Box>
+              <IconButton
+                aria-label={`Profile options for ${auth.fullName || 'admin'}`}
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+                sx={{ color: '#f0c7df', flexShrink: 0 }}
+              >
+                <AccountCircle />
+              </IconButton>
+            </Box>
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
@@ -253,7 +264,10 @@ const AdminLayout: React.FC = () => {
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
               <MenuItem disabled>
-                <Typography variant="body2" fontWeight={600}>{auth.fullName}</Typography>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>{auth.fullName}</Typography>
+                  <Typography variant="caption" color="text.secondary">{auth.role}</Typography>
+                </Box>
               </MenuItem>
               <Divider />
               <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>

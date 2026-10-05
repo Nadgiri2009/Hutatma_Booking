@@ -42,9 +42,10 @@ public class RefundsController : ControllerBase
             .Include(b => b.Venue)
             .Include(b => b.Payments)
             .AsQueryable();
+        int? bookingId = int.TryParse(bookingNumber, out var parsedBookingId) ? parsedBookingId : null;
 
         var bookings = !string.IsNullOrWhiteSpace(bookingNumber)
-            ? await query.Where(b => b.BookingNumber == bookingNumber).ToListAsync()
+            ? await query.Where(b => b.BookingNumber == bookingNumber || (bookingId.HasValue && b.Id == bookingId.Value)).ToListAsync()
             : await query.Where(b => b.Applicant != null && b.Applicant.Mobile == mobile)
                 .OrderByDescending(b => b.CreatedAt).ToListAsync();
 

@@ -222,7 +222,7 @@ const AdminVenuesPage: React.FC = () => {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>
           {dialogMode === 'venue' ? 'Add Venue & Pricing' : `Edit Pricing — ${editing?.priceItemName || 'Pricing Item'}`}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>

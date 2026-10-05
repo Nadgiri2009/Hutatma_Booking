@@ -9,6 +9,7 @@ public interface IBookingRepository
     Task<Booking?>             GetByBookingNumberAsync(string number);
     Task<List<Booking>>        GetByMobileAsync(string mobile);
     Task<List<Booking>>        GetBookingsForDateRangeAsync(int venueId, DateTime from, DateTime to);
+    Task<VenueMaster?>         GetVenueCapacityAsync(int venueId);
     Task<List<VenueEquipment>> GetEquipmentByIdsAsync(List<int> ids);
     Task<VenuePricing?>        GetVenuePricingAsync(int venuePricingId);
     Task<(List<Booking>, int)> GetAllAsync(BookingFilterDto filter);

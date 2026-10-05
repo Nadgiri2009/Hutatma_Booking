@@ -42,6 +42,19 @@ public class DateSlotDto
     public string   MorningStatus { get; set; } = "";
     public string   EveningStatus { get; set; } = "";
     public string   FullDayStatus { get; set; } = "";
+    public int      TotalSlots    { get; set; }
+    public int      BookedSlots   { get; set; }
+    public int      AvailableSlots { get; set; }
+    public int      CancelledBookingCount { get; set; }
+    public List<SessionAvailabilityDto> Sessions { get; set; } = new();
+}
+public class SessionAvailabilityDto
+{
+    public string Session { get; set; } = "";
+    public int TotalSlots { get; set; }
+    public int BookedSlots { get; set; }
+    public int AvailableSlots { get; set; }
+    public string Status { get; set; } = "";
 }
 
 // ── Booking Summary ───────────────────────────────────────────────────────────

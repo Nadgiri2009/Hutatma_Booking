@@ -1,9 +1,13 @@
 using HutatmaBooking.API.Data;
 using HutatmaBooking.API.Models;
+using HutatmaBooking.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BCrypt.Net;
+using System.Data;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace HutatmaBooking.API.Controllers;
 
@@ -154,46 +158,225 @@ public class ComplaintsController : ControllerBase
 [Route("api/[controller]")]
 public class CancellationsController : ControllerBase
 {
+    private static readonly TimeSpan OtpLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan OtpRequestCooldown = TimeSpan.FromSeconds(30);
+    private const int MaxOtpAttempts = 5;
+
     private readonly AppDbContext _db;
-    public CancellationsController(AppDbContext db) => _db = db;
+    private readonly INotificationService _notifications;
+
+    public CancellationsController(AppDbContext db, INotificationService notifications)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     [Authorize(Policy = "StaffPlus")]
     [HttpGet]
-    public async Task<IActionResult> GetAll() =>
-        Ok(await _db.Cancellations.Include(c => c.Booking)
-            .OrderByDescending(c => c.CreatedAt).ToListAsync());
+    public async Task<IActionResult> GetAll()
+    {
+        var cancellations = await _db.Cancellations.Include(c => c.Booking)
+            .OrderByDescending(c => c.CreatedAt).ToListAsync();
+        return Ok(cancellations.Select(c => new
+        {
+            c.Id,
+            c.BookingId,
+            c.Reason,
+            c.RequestedBy,
+            refundAmount = CalculateRefundAmount(c.Booking, c.CreatedAt),
+            c.RefundStatus,
+            c.ProcessedBy,
+            c.ProcessedAt,
+            c.CreatedAt,
+            booking = new { c.Booking.BookingNumber, c.Booking.FromDate, c.Booking.ToDate, c.Booking.Session },
+        }));
+    }
+
+    [HttpPost("{bookingId:int}/request-otp")]
+    public async Task<IActionResult> RequestCancellationOtp(int bookingId, [FromBody] CancellationOtpRequestDto dto)
+    {
+        var booking = await _db.Bookings
+            .Include(item => item.Applicant)
+            .Include(item => item.Payments)
+            .FirstOrDefaultAsync(item => item.Id == bookingId);
+        if (booking == null) return NotFound(new { error = "Booking not found." });
+
+        var mobile = dto.Mobile?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(mobile) || booking.Applicant?.Mobile != mobile)
+            return BadRequest(new { error = "The registered mobile number could not be verified." });
+
+        var ineligibilityReason = GetCancellationIneligibilityReason(booking);
+        if (ineligibilityReason != null) return Conflict(new { error = ineligibilityReason });
+        if (await _db.Cancellations.AnyAsync(item => item.BookingId == bookingId))
+            return Conflict(new { error = "A cancellation application already exists for this booking." });
+
+        var now = DateTime.UtcNow;
+        var challenge = await _db.CancellationOtpChallenges.FindAsync(bookingId);
+        if (challenge != null && challenge.UsedAt == null && now - challenge.CreatedAt < OtpRequestCooldown)
+            return Conflict(new { error = "Wait 30 seconds before requesting another verification code." });
+
+        var otp = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        if (challenge == null)
+        {
+            challenge = new CancellationOtpChallenge { BookingId = bookingId, Mobile = mobile };
+            _db.CancellationOtpChallenges.Add(challenge);
+        }
+        challenge.Mobile = mobile;
+        challenge.OtpHash = SHA256.HashData(Encoding.UTF8.GetBytes(otp));
+        challenge.CreatedAt = now;
+        challenge.ExpiresAt = now.Add(OtpLifetime);
+        challenge.FailedAttempts = 0;
+        challenge.UsedAt = null;
+        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _notifications.SendOneTimeCodeAsync(mobile, otp, "cancellation application");
+        }
+        catch (Exception)
+        {
+            challenge.UsedAt = DateTime.UtcNow;
+            challenge.OtpHash = new byte[32];
+            await _db.SaveChangesAsync();
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Could not deliver the verification code. Please try again later." });
+        }
+
+        return Ok(new { message = "A verification code was sent to the registered mobile number." });
+    }
+
+    [HttpPost("{bookingId:int}/apply-verified")]
+    public async Task<IActionResult> ApplyVerifiedCancellation(int bookingId, [FromBody] ApplyCancellationVerifiedDto dto)
+    {
+        var mobile = dto.Mobile.Trim();
+        var otp = dto.Otp.Trim();
+        var reason = dto.Reason.Trim();
+        var result = await _db.Database.CreateExecutionStrategy().ExecuteAsync<IActionResult>(async () =>
+        {
+            _db.ChangeTracker.Clear();
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var booking = await _db.Bookings
+                .Include(item => item.Applicant)
+                .Include(item => item.Payments)
+                .FirstOrDefaultAsync(item => item.Id == bookingId);
+            if (booking == null) return NotFound(new { error = "Booking not found." });
+            if (string.IsNullOrWhiteSpace(mobile) || booking.Applicant?.Mobile != mobile)
+                return BadRequest(new { error = "The registered mobile number could not be verified." });
+
+            var ineligibilityReason = GetCancellationIneligibilityReason(booking);
+            if (ineligibilityReason != null) return Conflict(new { error = ineligibilityReason });
+            if (await _db.Cancellations.AnyAsync(item => item.BookingId == bookingId))
+                return Conflict(new { error = "A cancellation application already exists for this booking." });
+
+            var challenge = await _db.CancellationOtpChallenges.SingleOrDefaultAsync(item => item.BookingId == bookingId);
+            var now = DateTime.UtcNow;
+            if (challenge == null || challenge.Mobile != mobile || challenge.UsedAt != null || challenge.ExpiresAt <= now)
+            {
+                if (challenge != null && challenge.UsedAt == null)
+                {
+                    challenge.UsedAt = now;
+                    challenge.OtpHash = new byte[32];
+                    await _db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                return BadRequest(new { error = "The verification code is invalid or expired. Request a new code." });
+            }
+
+            var suppliedHash = SHA256.HashData(Encoding.UTF8.GetBytes(otp));
+            if (!CryptographicOperations.FixedTimeEquals(challenge.OtpHash, suppliedHash))
+            {
+                challenge.FailedAttempts++;
+                if (challenge.FailedAttempts >= MaxOtpAttempts)
+                {
+                    challenge.UsedAt = now;
+                    challenge.OtpHash = new byte[32];
+                }
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return BadRequest(new { error = challenge.FailedAttempts >= MaxOtpAttempts
+                    ? "Too many incorrect codes. Request a new verification code."
+                    : "The verification code is incorrect." });
+            }
+
+            challenge.UsedAt = now;
+            challenge.OtpHash = new byte[32];
+            booking.Status = "Cancelled";
+            booking.CancelReason = reason;
+            booking.UpdatedAt = now;
+            var cancellation = new Cancellation
+            {
+                BookingId = booking.Id,
+                Reason = reason,
+                RequestedBy = booking.Applicant?.FullName ?? "Applicant",
+                RefundAmount = CalculateRefundAmount(booking, now),
+                RefundStatus = "Pending",
+                CreatedAt = now,
+            };
+            _db.Cancellations.Add(cancellation);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                cancellation.Id,
+                cancellation.BookingId,
+                cancellation.Reason,
+                cancellation.RequestedBy,
+                cancellation.RefundAmount,
+                cancellation.RefundStatus,
+                cancellation.CreatedAt,
+                bookingNumber = booking.BookingNumber,
+            });
+        });
+
+        return result;
+    }
 
     [HttpPost]
-    public async Task<IActionResult> RequestCancellation([FromBody] Cancellation dto)
+    public IActionResult RequestCancellation() =>
+        Conflict(new { error = "Verify the registered mobile number with an OTP before applying for cancellation." });
+
+    private static string? GetCancellationIneligibilityReason(Booking booking)
     {
-        var booking = await _db.Bookings.FindAsync(dto.BookingId);
-        if (booking == null) return NotFound();
-        if (booking.Status == "Cancelled") return BadRequest(new { error = "Already cancelled." });
-
-        booking.Status      = "Cancelled";
-        booking.CancelReason = dto.Reason;
-        booking.UpdatedAt   = DateTime.UtcNow;
-
-        dto.CreatedAt    = DateTime.UtcNow;
-        dto.RefundStatus = "Pending";
-        _db.Cancellations.Add(dto);
-        await _db.SaveChangesAsync();
-        return Ok(dto);
+        if (booking.Status != "Confirmed")
+            return "Cancellation is available only for confirmed bookings.";
+        if (!booking.Payments.Any(payment => payment.Status == "Paid"))
+            return "Cancellation is available only for bookings with a recorded payment.";
+        return null;
     }
 
     [Authorize(Policy = "StaffPlus")]
     [HttpPut("{id}/process")]
     public async Task<IActionResult> ProcessRefund(int id, [FromBody] ProcessRefundDto dto)
     {
-        var c = await _db.Cancellations.FindAsync(id);
+        var c = await _db.Cancellations.Include(cancellation => cancellation.Booking)
+            .FirstOrDefaultAsync(cancellation => cancellation.Id == id);
         if (c == null) return NotFound();
-        c.RefundAmount  = dto.RefundAmount;
+        if (c.RefundStatus != "Pending") return Conflict(new { error = "This cancellation refund has already been processed." });
+
+        var calculatedRefund = CalculateRefundAmount(c.Booking, c.CreatedAt);
+        if (dto.RefundAmount != calculatedRefund)
+            return BadRequest(new { error = $"Refund amount must match the cancellation policy amount of {calculatedRefund:0.00}." });
+
+        c.RefundAmount  = calculatedRefund;
         c.RefundStatus  = "Processed";
         c.ProcessedAt   = DateTime.UtcNow;
         var userId      = int.Parse(User.FindFirst("sub")?.Value ?? "0");
         c.ProcessedBy   = userId == 0 ? null : userId;
         await _db.SaveChangesAsync();
         return Ok(c);
+    }
+
+    private static decimal CalculateRefundAmount(Booking booking, DateTime cancellationDateTime)
+    {
+        var cancellationDate = DateOnly.FromDateTime(cancellationDateTime);
+        var eventDate = booking.FromDate;
+        if (eventDate >= cancellationDate.AddMonths(2))
+            return Math.Round(booking.GrandTotal * 0.90m, 2, MidpointRounding.AwayFromZero);
+        if (eventDate >= cancellationDate.AddMonths(1))
+            return Math.Round(booking.GrandTotal * 0.80m, 2, MidpointRounding.AwayFromZero);
+        if (eventDate.DayNumber - cancellationDate.DayNumber >= 7)
+            return Math.Round(booking.GrandTotal * 0.50m, 2, MidpointRounding.AwayFromZero);
+        return booking.SecurityDeposit;
     }
 }
 
@@ -243,4 +426,26 @@ public class ResolveDto
 public class ProcessRefundDto
 {
     public decimal RefundAmount { get; set; }
+}
+
+public class CancellationOtpRequestDto
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{10}$")]
+    public string Mobile { get; set; } = "";
+}
+
+public class ApplyCancellationVerifiedDto
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{10}$")]
+    public string Mobile { get; set; } = "";
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^\d{6}$")]
+    public string Otp { get; set; } = "";
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+    public string Reason { get; set; } = "";
 }

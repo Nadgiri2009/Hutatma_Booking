@@ -51,7 +51,7 @@ const AdminUsersPage: React.FC = () => {
       setOpen(false);
       load();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Operation failed');
+      toast.error(err.response?.data?.error || 'Transaction failed');
     }
   };
 
@@ -100,7 +100,7 @@ const AdminUsersPage: React.FC = () => {
                   <TableCell sx={{ color: '#94a3b8' }}>{i + 1}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar sx={{ bgcolor: '#1a3a6b', width: 34, height: 34, fontSize: '0.8rem' }}>
+                      <Avatar sx={{ bgcolor: '#50175d', width: 34, height: 34, fontSize: '0.8rem' }}>
                         {getInitials(u.fullName)}
                       </Avatar>
                       <Typography variant="body2" fontWeight={600}>{u.fullName}</Typography>
@@ -139,7 +139,7 @@ const AdminUsersPage: React.FC = () => {
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#1a3a6b', color: '#fff' }}>
+        <DialogTitle sx={{ bgcolor: '#50175d', color: '#fff' }}>
           {editing ? 'Edit User' : 'Add New User'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>

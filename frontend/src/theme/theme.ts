@@ -3,24 +3,24 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1a3a6b',       // Deep navy blue
-      light: '#2d5ea8',
-      dark: '#0f2340',
+      main: '#50175d',
+      light: '#b45490',
+      dark: '#351044',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#c9a227',       // Warm gold
-      light: '#e0bc4f',
-      dark: '#9e7c1a',
+      main: '#b45490',
+      light: '#d68db8',
+      dark: '#813a76',
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f5f7fa',
+      default: '#fbf6fa',
       paper: '#ffffff',
     },
     text: {
-      primary: '#1a2332',
-      secondary: '#5a6a7e',
+      primary: '#351b3d',
+      secondary: '#715f75',
     },
     success: { main: '#2e7d32' },
     warning: { main: '#ed6c02' },
@@ -67,12 +67,12 @@ const theme = createTheme({
           letterSpacing: '0.3px',
         },
         containedPrimary: {
-          background: 'linear-gradient(135deg, #1a3a6b 0%, #2d5ea8 100%)',
-          '&:hover': { background: 'linear-gradient(135deg, #0f2340 0%, #1a3a6b 100%)' },
+          background: 'linear-gradient(135deg, #b45490 0%, #48145e 100%)',
+          '&:hover': { background: 'linear-gradient(135deg, #9b3f7f 0%, #351044 100%)' },
         },
         containedSecondary: {
-          background: 'linear-gradient(135deg, #c9a227 0%, #e0bc4f 100%)',
-          '&:hover': { background: 'linear-gradient(135deg, #9e7c1a 0%, #c9a227 100%)' },
+          background: 'linear-gradient(135deg, #813a76 0%, #b45490 100%)',
+          '&:hover': { background: 'linear-gradient(135deg, #612568 0%, #9b3f7f 100%)' },
         },
       },
     },
@@ -91,7 +91,7 @@ const theme = createTheme({
           '& .MuiOutlinedInput-root': {
             borderRadius: 8,
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#2d5ea8',
+              borderColor: '#b45490',
             },
           },
         },
@@ -105,8 +105,8 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          background: 'linear-gradient(135deg, #0f2340 0%, #1a3a6b 100%)',
-          boxShadow: '0 2px 20px rgba(26,58,107,0.3)',
+          background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)',
+          boxShadow: '0 2px 20px rgba(72,20,94,0.24)',
         },
       },
     },
@@ -114,7 +114,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiTableCell-head': {
-            backgroundColor: '#1a3a6b',
+            backgroundColor: '#50175d',
             color: '#ffffff',
             fontWeight: 600,
             fontSize: '0.85rem',
@@ -126,7 +126,7 @@ const theme = createTheme({
     MuiTableRow: {
       styleOverrides: {
         root: {
-          '&:hover': { backgroundColor: 'rgba(26,58,107,0.04)' },
+          '&:hover': { backgroundColor: 'rgba(180,84,144,0.06)' },
           '&:nth-of-type(even)': { backgroundColor: 'rgba(0,0,0,0.02)' },
         },
       },

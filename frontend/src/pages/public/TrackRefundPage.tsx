@@ -7,7 +7,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useSearchParams } from 'react-router-dom';
 import { refundAPI } from '../../services/api';
 
-type SearchType = 'refund' | 'application' | 'mobile';
+type SearchType = 'refund' | 'booking';
 type TrackedRefund = {
   refundRequestNumber: string;
   applicationNumber: string;
@@ -44,25 +44,27 @@ const TrackRefundPage: React.FC = () => {
     const type = searchParams.get('type') as SearchType | null;
     const value = searchParams.get('value');
     if (value && type && ['refund', 'application', 'mobile'].includes(type)) {
-      setSearchType(type);
+      setSearchType(type === 'refund' ? 'refund' : 'booking');
       setSearch(value);
     }
   }, [searchParams]);
 
   const track = async () => {
     if (!search.trim()) {
-      setError('Enter a refund request number, application number, or mobile number.');
+      setError('Enter a refund request number, application number, or registered mobile number.');
       return;
     }
     setLoading(true);
     setSearched(true);
     setError('');
     setResults([]);
+    const value = search.trim();
+    const isMobileNumber = /^\+?\d{10,15}$/.test(value);
     const params = searchType === 'refund'
-      ? { refundRequestNumber: search.trim() }
-      : searchType === 'application'
-        ? { bookingNumber: search.trim() }
-        : { mobile: search.trim() };
+      ? { refundRequestNumber: value }
+      : isMobileNumber
+        ? { mobile: value }
+        : { bookingNumber: value };
     try {
       const response = await refundAPI.track(params);
       setResults(response.data || []);
@@ -74,7 +76,7 @@ const TrackRefundPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: 'calc(100vh - 72px)', py: { xs: 3, md: 6 } }}>
+    <Box sx={{ bgcolor: '#fbf6fa', minHeight: 'calc(100vh - 72px)', py: { xs: 3, md: 6 } }}>
       <Container maxWidth="md">
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" fontWeight={800} color="primary.main">Track Refund</Typography>
@@ -88,17 +90,17 @@ const TrackRefundPage: React.FC = () => {
             value={searchType}
             onChange={(_, value: SearchType | null) => value && setSearchType(value)}
             sx={{ mb: 2, display: 'flex', flexWrap: 'wrap' }}
-            aria-label="Track by refund number, application number, or mobile number"
+            aria-label="Track by refund request number, application number, or mobile number"
           >
             <ToggleButton value="refund">Refund Request Number</ToggleButton>
-            <ToggleButton value="application">Application Number</ToggleButton>
-            <ToggleButton value="mobile">Mobile Number</ToggleButton>
+            <ToggleButton value="booking">Application Number or Mobile Number</ToggleButton>
           </ToggleButtonGroup>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <TextField
               fullWidth
               size="small"
-              label={searchType === 'refund' ? 'Refund Request Number' : searchType === 'application' ? 'Application Number' : 'Registered Mobile Number'}
+              label={searchType === 'refund' ? 'Refund Request Number' : 'Application Number or Registered Mobile Number'}
+              placeholder={searchType === 'refund' ? 'Enter refund request number' : 'e.g. HSM-2026-00001 or 9876543210'}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && track()}

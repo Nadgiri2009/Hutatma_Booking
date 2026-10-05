@@ -61,6 +61,12 @@ export const refundAPI = {
   process: (id: number) => api.put(`/refunds/${id}/process`),
 };
 
+export const cancellationAPI = {
+  requestOtp: (bookingId: number, mobile: string) => api.post(`/cancellations/${bookingId}/request-otp`, { mobile }),
+  applyVerified: (bookingId: number, mobile: string, otp: string, reason: string) =>
+    api.post(`/cancellations/${bookingId}/apply-verified`, { mobile, otp, reason }),
+};
+
 // ── Venues ────────────────────────────────────────────────────────────────────
 export const venueAPI = {
   getAll:       ()              => api.get('/venues'),
@@ -71,6 +77,8 @@ export const venueAPI = {
   getAllForAdmin: ()                          => api.get('/venues/admin/all'),
   updatePricing:  (id: number, data: any)     => api.put(`/venues/pricing/${id}`, data),
   createVenue:    (data: any)                 => api.post('/venues/admin', data),
+  updateBookingCapacity: (id: number, session: 'Morning' | 'Evening', capacity: number) =>
+    api.put(`/venues/${id}/booking-capacity`, { session, capacity }),
   createPricing:  (venueId: number, data: any) => api.post(`/venues/${venueId}/pricing`, data),
   removeVenue:    (id: number)                => api.delete(`/venues/${id}`),
   removePricing:  (id: number)                => api.delete(`/venues/pricing/${id}`),

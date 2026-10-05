@@ -67,7 +67,7 @@ const AdminLoginPage: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f2340 0%, #1a3a6b 50%, #2d5ea8 100%)',
+        background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)',
         p: 2,
       }}
     >
@@ -84,14 +84,14 @@ const AdminLoginPage: React.FC = () => {
         <Box
           sx={{
             p: 4,
-            background: 'linear-gradient(135deg, #0f2340 0%, #1a3a6b 100%)',
+            background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)',
             textAlign: 'center',
           }}
         >
           <Avatar
             sx={{
               width: 70, height: 70,
-              bgcolor: '#c9a227',
+              bgcolor: '#b45490',
               mx: 'auto', mb: 2,
               fontSize: '1.8rem',
             }}
