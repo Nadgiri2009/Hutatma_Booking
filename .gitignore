@@ -83,6 +83,10 @@ secrets.json
 coverage/
 .nyc_output/
 TestResults/
+backend/ConflictValidation/
+backend/FinalValidation/
+backend/ServerPaymentValidation/
+backend/VenueCapacityValidation/
 
 # =========================
 # Keep Important Files in VCS
