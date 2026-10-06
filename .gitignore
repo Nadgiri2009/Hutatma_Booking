@@ -56,11 +56,8 @@ logs/
 !.env.example
 
 # ASP.NET local/development-only settings
-appsettings.Development.json
-appsettings.Local.json
-backend/appsettings.json
-backend/appsettings.Production.json
-backend/appsettings.*.json
+**/appsettings.json
+**/appsettings.*.json
 !backend/appsettings.example.json
 
 # Generic secret/key material
