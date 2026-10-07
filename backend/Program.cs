@@ -19,6 +19,7 @@ if (string.IsNullOrWhiteSpace(aspnetCoreEnv))
 }
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
 // Serilog
 Log.Logger = new LoggerConfiguration()

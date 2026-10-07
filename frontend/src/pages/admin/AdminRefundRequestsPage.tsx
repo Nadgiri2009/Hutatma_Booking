@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Box, Button, Card, CardActions, CardContent, Chip, CircularProgress,
+  Alert, Box, Button, Chip, CircularProgress,
   Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, Paper,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Typography,
 } from '@mui/material';
 import { CheckCircleOutline, Close, FactCheck, Print, Refresh, Visibility } from '@mui/icons-material';
@@ -206,39 +207,55 @@ const AdminRefundRequestsPage: React.FC = () => {
       {loading && !items.length && <Box className="refund-screen-only" sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>}
       {!loading && !items.length && !error && <Paper className="refund-screen-only" variant="outlined" sx={{ textAlign: 'center', py: 6, borderRadius: 1.5 }}><Typography fontWeight={700}>No refund requests</Typography></Paper>}
 
-      <Grid container spacing={2} className="refund-screen-only">
-        {items.map((item) => (
-          <Grid item xs={12} md={6} key={item.id}>
-            <Card variant="outlined" sx={{ height: '100%', borderRadius: 1.5, display: 'flex', flexDirection: 'column' }}>
-              <CardContent sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
-                  <Box><Typography variant="overline" color="text.secondary">Refund Request</Typography><Typography variant="subtitle1" fontWeight={800} color="primary.main">{item.refundRequestNumber}</Typography></Box>
-                  <Chip size="small" label={item.status} color={statusColor(item.status)} />
-                </Box>
-                <Grid container spacing={1}>
-                  <Grid item xs={6}><Info label="Application Number" value={item.applicationNumber} /></Grid>
-                  <Grid item xs={6}><Info label="Applicant" value={item.applicantName} /></Grid>
-                  <Grid item xs={6}><Info label="Contact Number" value={item.contactNumber} /></Grid>
-                  <Grid item xs={6}><Info label="Venue / Hall" value={item.venue} /></Grid>
-                  <Grid item xs={6}><Info label="Booking Date / Slot" value={`${bookingDate(item)} · ${item.session}`} /></Grid>
-                  <Grid item xs={6}><Info label="Booking Amount" value={money(item.bookingAmount)} /></Grid>
-                  <Grid item xs={6}><Info label="Deposit Amount" value={money(item.depositAmount)} /></Grid>
-                  <Grid item xs={6}><Info label="Refund Amount" value={money(item.refundAmount)} /></Grid>
-                  <Grid item xs={6}><Info label="Request Date" value={dateTime(item.requestedAt)} /></Grid>
-                  <Grid item xs={6}><Info label="Last Updated" value={dateTime(item.updatedAt || item.requestedAt)} /></Grid>
-                  <Grid item xs={6}><Info label="Payment Reference" value={item.paymentReferences.map((p) => p.transactionRef || p.gatewayPaymentId).filter(Boolean).join(', ') || 'Not available'} /></Grid>
-                </Grid>
-              </CardContent>
-              <Divider />
-              <CardActions sx={{ px: 2, py: 1, flexWrap: 'wrap' }}>
-                <Button size="small" startIcon={<Visibility />} onClick={() => viewDetails(item)}>View Details</Button>
-                <Button size="small" startIcon={<Print />} onClick={() => printRequest(item)}>Print</Button>
-                {actionButtons(item)}
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {items.length > 0 && (
+        <TableContainer component={Paper} variant="outlined" className="refund-screen-only" sx={{ borderRadius: 1.5 }}>
+          <Table sx={{ minWidth: 1050 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#f8f4f8' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Refund Request</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Application</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Applicant / Contact</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Venue / Booking</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>Refund Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Request Date</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id} hover>
+                  <TableCell sx={{ minWidth: 205 }}>
+                    <Typography variant="body2" fontWeight={700} color="primary.main">{item.refundRequestNumber}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{item.applicationNumber}</TableCell>
+                  <TableCell sx={{ minWidth: 155 }}>
+                    <Typography variant="body2" fontWeight={600}>{item.applicantName}</Typography>
+                    <Typography variant="caption" color="text.secondary">{item.contactNumber}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>
+                    <Typography variant="body2" fontWeight={600}>{item.venue}</Typography>
+                    <Typography variant="caption" color="text.secondary">{bookingDate(item)} · {item.session}</Typography>
+                  </TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{money(item.refundAmount)}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{dateTime(item.requestedAt)}</TableCell>
+                  <TableCell><Chip size="small" label={item.status} color={statusColor(item.status)} /></TableCell>
+                  <TableCell align="right" sx={{ minWidth: 160 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                      <Button size="small" variant="contained" startIcon={<Visibility />} onClick={() => viewDetails(item)}>
+                        View & Process
+                      </Button>
+                      <Button size="small" aria-label={`Print ${item.refundRequestNumber}`} onClick={() => printRequest(item)}>
+                        <Print />
+                      </Button>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {printItem && (
         <Paper className="refund-printable" variant="outlined" sx={{ display: 'none', p: 3, color: '#111', borderRadius: 0 }}>

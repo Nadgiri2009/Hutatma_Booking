@@ -2,6 +2,7 @@ using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Services.Interfaces;
 using System.Net;
 using System.Net.Mail;
+using System.Net.Sockets;
 using Microsoft.AspNetCore.Hosting;
 
 namespace HutatmaBooking.API.Services;
@@ -27,22 +28,42 @@ public class NotificationService : INotificationService
 
     public async Task SendOneTimeCodeAsync(string mobile, string otp, string purpose)
     {
-        if (IsAclGatewayConfigured())
+        try
         {
-            await SendSmsAsync(
-                mobile,
-                $"Your Hutatma Smruti Mandir {purpose} verification code is {otp}. It expires in 5 minutes.",
-                "OtpDltTemplateId");
-            return;
-        }
+            if (_environment.IsDevelopment())
+            {
+                Console.WriteLine($"TEMPORARY {purpose.ToUpperInvariant()} OTP for {mobile}: {otp} (expires in 5 minutes)");
+                return;
+            }
 
-        if (_environment.IsDevelopment())
+            if (IsAclGatewayConfigured())
+            {
+                await SendSmsAsync(
+                    mobile,
+                    $"Your Hutatma Smruti Mandir {purpose} verification code is {otp}. It expires in 5 minutes.",
+                    "OtpDltTemplateId");
+                return;
+            }
+
+            throw new InvalidOperationException("SMS verification is not configured.");
+        }
+        catch (Exception ex)
         {
-            Console.WriteLine($"TEMPORARY {purpose.ToUpperInvariant()} OTP for {mobile}: {otp} (expires in 5 minutes)");
-            return;
+            var failureDetails = ex switch
+            {
+                InvalidOperationException => ex.Message,
+                HttpRequestException { InnerException: SocketException socketException } =>
+                    $"network error {socketException.SocketErrorCode}",
+                HttpRequestException httpException => $"HTTP {httpException.StatusCode?.ToString() ?? "no response"}",
+                OperationCanceledException => "request timed out or was canceled",
+                _ => ex.GetType().Name
+            };
+            _logger.LogError(
+                "One-time-code SMS delivery failed for {Purpose}: {FailureDetails}",
+                purpose,
+                failureDetails);
+            throw;
         }
-
-        throw new InvalidOperationException("SMS verification is not configured.");
     }
 
     public async Task SendBookingPaymentNotificationAsync(Booking booking, Payment payment, string receiptNumber)

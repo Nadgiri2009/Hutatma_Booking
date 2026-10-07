@@ -23,13 +23,20 @@ public class AuthService : IAuthService
     private readonly AppDbContext _db;
     private readonly IConfiguration  _config;
     private readonly ILogger<AuthService> _logger;
+    private readonly INotificationService _notifications;
 
-    public AuthService(IUserRepository userRepo, AppDbContext db, IConfiguration config, ILogger<AuthService> logger)
+    public AuthService(
+        IUserRepository userRepo,
+        AppDbContext db,
+        IConfiguration config,
+        ILogger<AuthService> logger,
+        INotificationService notifications)
     {
         _userRepo = userRepo;
         _db       = db;
         _config   = config;
         _logger   = logger;
+        _notifications = notifications;
     }
 
     public async Task RequestAdminOtpAsync(string mobile)
@@ -62,7 +69,7 @@ public class AuthService : IAuthService
         challenge.FailedAttempts = 0;
         challenge.UsedAt = null;
         await _db.SaveChangesAsync();
-        Console.WriteLine($"TEMPORARY ADMIN LOGIN OTP for {normalizedMobile}: {otp} (expires in 5 minutes)");
+        await _notifications.SendOneTimeCodeAsync(normalizedMobile, otp, "admin login");
     }
 
     public async Task<LoginResponseDto?> VerifyAdminOtpAsync(string mobile, string otp)

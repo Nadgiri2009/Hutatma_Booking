@@ -103,7 +103,7 @@ const CancellationApplicationPage: React.FC = () => {
       const response = await cancellationAPI.requestOtp(selectedBooking.bookingId, selectedBooking.contactNumber);
       setOtpBookingId(selectedBooking.bookingId);
       setOtp('');
-      toast.info(response.data.message || 'A verification code was sent to the registered mobile number.');
+      toast.info(response.data.message || 'Verification code requested. For local testing, check the backend terminal.');
     } catch (requestError: any) {
       setError(requestError.response?.data?.error || 'The verification code could not be sent. Please try again.');
     } finally {
@@ -117,7 +117,7 @@ const CancellationApplicationPage: React.FC = () => {
       return;
     }
     if (!/^\d{6}$/.test(otp)) {
-      setError('Enter the six-digit verification code sent to the registered mobile number.');
+      setError('Enter the six-digit verification code.');
       return;
     }
     setSubmitting(true);
@@ -363,7 +363,7 @@ const CancellationApplicationPage: React.FC = () => {
                   value={otp}
                   onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                   inputProps={{ inputMode: 'numeric', autoComplete: 'one-time-code', maxLength: 6 }}
-                  helperText={`Sent to registered mobile ending ${selectedBooking.contactNumber.slice(-4)}`}
+                  helperText={`Local testing: find the code in the backend terminal. Otherwise, check the registered mobile ending ${selectedBooking.contactNumber.slice(-4)}.`}
                   sx={{ flex: '1 1 230px' }}
                 />
                 <Button variant="contained" color="error" onClick={submitCancellation} disabled={submitting || !/^\d{6}$/.test(otp)}>

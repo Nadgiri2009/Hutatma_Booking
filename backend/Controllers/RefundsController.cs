@@ -23,12 +23,18 @@ public class RefundsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly INotificationService _notifications;
     private readonly IAuditService _audit;
+    private readonly IWebHostEnvironment _environment;
 
-    public RefundsController(AppDbContext db, INotificationService notifications, IAuditService audit)
+    public RefundsController(
+        AppDbContext db,
+        INotificationService notifications,
+        IAuditService audit,
+        IWebHostEnvironment environment)
     {
         _db = db;
         _notifications = notifications;
         _audit = audit;
+        _environment = environment;
     }
 
     [HttpGet("lookup")]
@@ -156,7 +162,10 @@ public class RefundsController : ControllerBase
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Could not deliver the verification code. Please try again later." });
         }
 
-        return Ok(new { message = "A verification code was sent to the registered mobile number." });
+        var message = _environment.IsDevelopment()
+            ? "The verification code is printed in the backend terminal for local testing."
+            : "A verification code was sent to the registered mobile number.";
+        return Ok(new { message });
     }
 
     [HttpPost("{bookingId:int}/apply-verified")]

@@ -9,13 +9,22 @@ namespace HutatmaBooking.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
-    public AuthController(IAuthService auth) => _auth = auth;
+    private readonly IWebHostEnvironment _environment;
+
+    public AuthController(IAuthService auth, IWebHostEnvironment environment)
+    {
+        _auth = auth;
+        _environment = environment;
+    }
 
     [HttpPost("request-otp")]
     public async Task<IActionResult> RequestOtp([FromBody] AdminOtpRequestDto dto)
     {
         await _auth.RequestAdminOtpAsync(dto.Mobile);
-        return Ok(new { message = "If this is an active admin account, a one-time code has been sent to the backend terminal." });
+        var message = _environment.IsDevelopment()
+            ? "If this is an active account, the one-time code is printed in the backend terminal."
+            : "If this is an active account, the one-time code has been sent to the registered mobile number.";
+        return Ok(new { message });
     }
 
     [HttpPost("verify-otp")]

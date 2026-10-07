@@ -170,11 +170,16 @@ public class CancellationsController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly IWebHostEnvironment _environment;
 
-    public CancellationsController(AppDbContext db, INotificationService notifications)
+    public CancellationsController(
+        AppDbContext db,
+        INotificationService notifications,
+        IWebHostEnvironment environment)
     {
         _db = db;
         _notifications = notifications;
+        _environment = environment;
     }
 
     [Authorize(Policy = "StaffPlus")]
@@ -247,7 +252,10 @@ public class CancellationsController : ControllerBase
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Could not deliver the verification code. Please try again later." });
         }
 
-        return Ok(new { message = "A verification code was sent to the registered mobile number." });
+        var message = _environment.IsDevelopment()
+            ? "The verification code is printed in the backend terminal for local testing."
+            : "A verification code was sent to the registered mobile number.";
+        return Ok(new { message });
     }
 
     [HttpPost("{bookingId:int}/apply-verified")]
