@@ -1,15 +1,36 @@
 # Deployment Guide
 
-This guide deploys the React frontend and ASP.NET Core 8 API as separate IIS sites, backed by SQL Server. Use separate HTTPS hostnames such as `https://booking.example.org` and `https://api.example.org`.
+This guide deploys the React frontend and ASP.NET Core 8 API on Windows Server/IIS, backed by SQL Server. The public site uses `hsm.solapurcorporation.org` and `115.242.140.250`; IIS serves the frontend on the public bindings and reverse-proxies `/api/*` to an API site bound only to loopback.
 
 ## 1. Prepare the Server
 
-1. Install Windows Server updates and configure DNS for the frontend and API hostnames.
-2. Install IIS with Static Content, WebSocket Protocol if required, and the IIS URL Rewrite module.
-3. Install the .NET 8 Hosting Bundle on the API server, then restart IIS.
-4. Install SQL Server 2022 (or a supported managed SQL Server) and configure encrypted connectivity from the API server.
-5. Install Node.js 18 LTS on the build machine. Node.js is only needed to build the frontend; it is not required to serve the static build from IIS.
-6. Ensure the server has a valid TLS certificate for both public hostnames.
+1. In the authoritative DNS zone for `solapurcorporation.org`, create or update an **A** record: host `hsm`, value `115.242.140.250`. Remove conflicting A/AAAA records unless they also point to this server. DNS changes must be made with the domain's DNS provider; IIS cannot create public DNS records.
+2. Verify DNS after it propagates:
+
+   ```powershell
+   Resolve-DnsName hsm.solapurcorporation.org
+   ```
+
+   Confirm the returned IPv4 address is `115.242.140.250`. Ensure the server owns that public IP, or that the router/NAT forwards ports 80 and 443 to it.
+3. Install Windows Server updates and IIS with Static Content, the IIS URL Rewrite module, and Application Request Routing (ARR). Enable ARR's **Proxy** feature at the server level in IIS Manager.
+4. Install the .NET 8 Hosting Bundle on the IIS server, then restart IIS.
+5. Install SQL Server 2022 (or a supported managed SQL Server) and configure encrypted connectivity from the API server.
+6. Install Node.js 18 LTS on the build machine. Node.js is needed only to build the frontend.
+7. Obtain a trusted TLS certificate for `hsm.solapurcorporation.org` and install it in the server's Local Computer certificate store.
+
+### Public IIS bindings
+
+Create one frontend IIS site, with its physical path set to the deployed React `build` directory. Add these bindings to that site:
+
+| Type | IP address | Port | Host name | Certificate |
+| --- | --- | ---: | --- | --- |
+| HTTP | All Unassigned (or `115.242.140.250`) | 80 | `hsm.solapurcorporation.org` | None |
+| HTTP | `115.242.140.250` | 80 | *(leave blank)* | None |
+| HTTPS | All Unassigned (or `115.242.140.250`) | 443 | `hsm.solapurcorporation.org` | Domain certificate; enable SNI if sharing the IP |
+
+The blank-host HTTP binding lets `http://115.242.140.250` reach the site; the included frontend `web.config` redirects HTTP requests, including IP requests, to `https://hsm.solapurcorporation.org`. Use the domain URL for normal public access. A regular domain certificate does **not** validate `https://115.242.140.250`; only add an HTTPS IP binding if the certificate includes that IP address in its subject alternative names.
+
+Open inbound TCP 80 and 443 in Windows Firewall and any upstream firewall/NAT. Do not expose the API's loopback port (5001) publicly.
 
 ## 2. Configure SQL Server
 
@@ -32,6 +53,8 @@ This guide deploys the React frontend and ASP.NET Core 8 API as separate IIS sit
 
 Do not commit production credentials, `.env` files, or `appsettings.Production.json`. The repository ignores local appsettings files and environment files; keep production values in a protected secret store or in the hosting environment.
 
+**Set `ASPNETCORE_ENVIRONMENT=Production` explicitly in IIS.** `backend\Program.cs` defaults an unset environment to `Development`.
+
 Configure these values for the API process using .NET environment-variable naming (`__` represents a configuration section separator):
 
 | Setting | Purpose |
@@ -44,8 +67,10 @@ Configure these values for the API process using .NET environment-variable namin
 | `PaymentGateway__Razorpay__Key`, `PaymentGateway__Razorpay__Secret`, `PaymentGateway__Razorpay__WebhookSecret` | Credentials from the corresponding Razorpay environment. Never mix test and live credentials. |
 | `PaymentGateway__CallbackUrl` | Public HTTPS payment callback URL, if configured for the provider. |
 | `PaymentNotifications__Smtp__*` | SMTP host, port, TLS, username, password, and sender address. |
-| `PaymentNotifications__Twilio__*` | Twilio credentials and sender number when SMS delivery is enabled. |
-| `FileStorage__UploadPath` | Persistent upload directory outside the disposable deployment folder. |
+| `PaymentNotifications__AclGateway__BaseUrl` | ACL gateway endpoint, for example `https://push3.aclgateway.com/servlet/com.aclwireless.pushconnectivity.listeners.TextListener`. |
+| `PaymentNotifications__AclGateway__AppId`, `PaymentNotifications__AclGateway__UserId`, `PaymentNotifications__AclGateway__Password`, `PaymentNotifications__AclGateway__SenderId` | ACL gateway credentials and registered sender ID. Keep credentials in protected server configuration; do not commit them. |
+| `PaymentNotifications__AclGateway__OtpDltTemplateId`, `PaymentNotifications__AclGateway__PaymentDltTemplateId` | DLT template IDs registered and approved for the OTP and payment SMS text, respectively. |
+| `FileStorage__UploadPath` | Not currently read by the upload controller, which writes under `wwwroot\uploads\idproofs`; preserve that directory as described below. |
 
 Use the values and structure in `backend\appsettings.example.json` as a reference only. Configure SQL encryption and certificate validation for production; do not copy development settings such as `TrustServerCertificate=True` without an approved reason.
 
@@ -65,13 +90,13 @@ Complete these checks before exposing the API to the internet:
            .AllowAnyMethod()));
    ```
 
-   Set `AllowedOrigins` to the exact frontend origin, such as `https://booking.example.org`.
+   Set `AllowedOrigins` to `https://hsm.solapurcorporation.org` if the CORS policy is made configurable. The production frontend uses the same origin for `/api`.
 
 2. **Protect Swagger.** Swagger is currently enabled in every environment. Disable it in production or protect it behind an authenticated/internal-only route before internet exposure.
-3. **Change default credentials.** Change any seeded/default administrator password before launch and verify that no sample JWT, SQL, Razorpay, SMTP, or Twilio credentials are present in the production environment.
-4. **Use HTTPS only.** Bind valid certificates in IIS, redirect HTTP to HTTPS, and use HTTPS URLs for the frontend API URL and payment callbacks.
+3. **Change default credentials.** Change any seeded/default administrator password before launch and verify that no sample JWT, SQL, Razorpay, SMTP, or ACL gateway credentials are present in the production environment.
+4. **Use HTTPS only for the public domain.** Bind the domain certificate in IIS and redirect domain HTTP traffic to HTTPS. Direct-IP HTTP is for diagnostics only; do not enter applicant or payment information there. Use HTTPS URLs for external payment callbacks.
 
-## 5. Publish the API
+## 5. Publish the API behind IIS
 
 Run from the repository root on the build machine:
 
@@ -79,45 +104,44 @@ Run from the repository root on the build machine:
 dotnet publish .\backend\HutatmaBooking.API.csproj --configuration Release --output .\artifacts\api
 ```
 
-1. Copy the contents of `artifacts\api` to a versioned directory on the server, for example `D:\Sites\HutatmaApi\releases\2026-10-05`.
+1. Copy the contents of `artifacts\api` to a versioned directory on the server, for example `D:\Sites\HutatmaApi\releases\2026-10-07`.
 2. Create an IIS application pool with **.NET CLR Version: No Managed Code**.
-3. Create an IIS site for `api.example.org`, pointing to the published API directory. Use the generated ASP.NET Core `web.config` in the publish output.
-4. Bind HTTPS and assign the API application pool.
-5. Grant the application-pool identity read/execute access to the publish directory and write access only to the configured upload and log directories.
-6. Set the production environment variables for the application process. Restart the site after changing them.
-7. Start the API and check the startup logs. Database migration or connectivity failures must be resolved before enabling traffic.
+3. Create an IIS site named `HutatmaBookingApi` pointing to the published API directory. Add a single HTTP binding to IP `127.0.0.1`, port `5001`, with no host name. Do not add a public binding. Keep the generated ASP.NET Core `web.config` in the published directory.
+4. Assign the API application pool and grant its identity read/execute access to the API directory plus write access to persistent upload and log directories.
+5. Set `ASPNETCORE_ENVIRONMENT=Production` and production configuration/secrets for the API process. For IIS, use the API site's deployed `web.config` `<aspNetCore><environmentVariables>` section or the server's protected environment configuration; never add secrets to source control. Recycle the API application pool after changes.
+6. Keep the frontend site's included `/api/*` rewrite rule. It forwards requests to `http://127.0.0.1:5001`; this requires ARR Proxy to be enabled. Test `http://127.0.0.1:5001/api/venues` on the server before publishing traffic.
+7. Start the API and check its logs. Resolve database migration/connectivity errors before enabling public traffic.
 
 ## 6. Build and Publish the Frontend
 
-The API URL is embedded in the React build, so set it before building. From the repository root:
+Build the frontend to use a relative API URL so both the domain and IP bindings work without a separate API DNS name. From the repository root:
 
 ```powershell
 Push-Location .\frontend
 npm ci
-$env:REACT_APP_API_URL = 'https://api.example.org/api'
+$env:REACT_APP_API_URL = '/api'
 npm run build
 Pop-Location
 ```
 
-1. Confirm that `frontend\build` is generated and that its API URL points to the production API, not `localhost` or a LAN address.
-2. Create a separate IIS site for `booking.example.org`, pointing to the contents of `frontend\build`.
-3. The existing `frontend\public\web.config` is copied into the build and provides SPA route fallback for IIS. Install IIS URL Rewrite so this rule works.
-4. Bind HTTPS and configure the frontend site to serve `index.html` for client-side routes.
-5. Do not put API credentials or other secrets in React environment variables; frontend build variables are public in the generated JavaScript.
+1. Confirm that `frontend\build` is generated and that API requests use `/api` (not `localhost` or a hard-coded server address).
+2. Deploy the contents of `frontend\build` to the frontend IIS site's physical path. Its included `web.config` redirects domain HTTP to HTTPS, proxies `/api/*` to the loopback API site, and falls back to `index.html` for React routes.
+3. In IIS Manager, verify the domain and IP bindings. The API site must remain bound only to `127.0.0.1:5001`.
+4. Do not put API credentials or other secrets in React environment variables; build variables are public in the generated JavaScript.
 
 ## 7. Configure Storage, Logs, and Backups
 
-1. Store user uploads on persistent storage. Do not keep uploads only inside a release directory that will be replaced during deployment.
-2. Grant the API application-pool identity write permission to the configured upload directory and the Serilog log directory.
+1. The current upload controller writes ID proofs under the API site's `wwwroot\uploads\idproofs`. Preserve that directory across API releases (for example, keep it outside the release directory and use a junction), and back it up. `FileStorage:UploadPath` is not currently used by that controller.
+2. Grant the API application-pool identity write permission to the persistent upload directory and the Serilog log directory.
 3. Configure log rotation, monitoring, and alerts for API startup failures, database errors, payment callbacks, and notification delivery failures.
 4. Schedule SQL Server full backups and test restoring them. Retain a pre-deployment backup before applying migrations.
 5. Keep the previous frontend and API release directories until the new release passes its smoke tests.
 
 ## 8. Smoke-Test the Deployment
 
-1. Open `https://booking.example.org` and verify that direct navigation to routes such as `/cancel-booking` and `/track-refund` works after refresh.
-2. Request `https://api.example.org/api/venues` and confirm the API returns venue data.
-3. Check the browser console and network panel for CORS failures or requests accidentally sent to `localhost`.
+1. Open `https://hsm.solapurcorporation.org` and verify that direct navigation to routes such as `/cancel-booking` and `/track-refund` works after refresh.
+2. Request `https://hsm.solapurcorporation.org/api/venues` and confirm the API returns venue data.
+3. Verify `http://115.242.140.250` reaches the frontend. Check the browser console and network panel for failed `/api/` requests.
 4. Test application/mobile lookup, booking availability, booking summary, and admin sign-in with non-production test data.
 5. In a payment test environment, verify payment initiation, callback handling, receipt generation, and notification delivery. Do not test live charges with production credentials.
 6. Verify that uploaded files persist across an API deployment and that logs are being written.

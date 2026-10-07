@@ -1,9 +1,7 @@
 using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Services.Interfaces;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Mail;
-using System.Text;
 using Microsoft.AspNetCore.Hosting;
 
 namespace HutatmaBooking.API.Services;
@@ -13,21 +11,28 @@ public class NotificationService : INotificationService
     private readonly IConfiguration _config;
     private readonly ILogger<NotificationService> _logger;
     private readonly IWebHostEnvironment _environment;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public NotificationService(IConfiguration config, ILogger<NotificationService> logger, IWebHostEnvironment environment)
+    public NotificationService(
+        IConfiguration config,
+        ILogger<NotificationService> logger,
+        IWebHostEnvironment environment,
+        IHttpClientFactory httpClientFactory)
     {
         _config = config;
         _logger = logger;
         _environment = environment;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task SendOneTimeCodeAsync(string mobile, string otp, string purpose)
     {
-        var accountSid = _config["PaymentNotifications:Twilio:AccountSid"];
-        var authToken = _config["PaymentNotifications:Twilio:AuthToken"];
-        if (!string.IsNullOrWhiteSpace(accountSid) && !string.IsNullOrWhiteSpace(authToken))
+        if (IsAclGatewayConfigured())
         {
-            await SendSmsAsync(mobile, $"Your Hutatma Smruti Mandir {purpose} verification code is {otp}. It expires in 5 minutes.");
+            await SendSmsAsync(
+                mobile,
+                $"Your Hutatma Smruti Mandir {purpose} verification code is {otp}. It expires in 5 minutes.",
+                "OtpDltTemplateId");
             return;
         }
 
@@ -44,8 +49,7 @@ public class NotificationService : INotificationService
     {
         var emailEnabled = !string.IsNullOrWhiteSpace(_config["PaymentNotifications:Smtp:Host"])
             && !string.IsNullOrWhiteSpace(_config["PaymentNotifications:Smtp:FromEmail"]);
-        var smsEnabled = !string.IsNullOrWhiteSpace(_config["PaymentNotifications:Twilio:AccountSid"])
-            && !string.IsNullOrWhiteSpace(_config["PaymentNotifications:Twilio:AuthToken"]);
+        var smsEnabled = IsAclGatewayConfigured();
 
         if (!emailEnabled && !smsEnabled)
         {
@@ -71,7 +75,7 @@ public class NotificationService : INotificationService
         {
             try
             {
-                await SendSmsAsync(booking.Applicant.Mobile, message);
+                await SendSmsAsync(booking.Applicant.Mobile, message, "PaymentDltTemplateId");
             }
             catch (Exception ex)
             {
@@ -106,24 +110,57 @@ public class NotificationService : INotificationService
         await client.SendMailAsync(message);
     }
 
-    private async Task SendSmsAsync(string mobile, string body)
+    private bool IsAclGatewayConfigured()
     {
-        var accountSid = _config["PaymentNotifications:Twilio:AccountSid"];
-        var authToken = _config["PaymentNotifications:Twilio:AuthToken"];
-        var fromNumber = _config["PaymentNotifications:Twilio:FromNumber"];
-        var normalizedMobile = mobile.StartsWith("+") ? mobile : $"+91{mobile}";
+        return !string.IsNullOrWhiteSpace(_config["PaymentNotifications:AclGateway:BaseUrl"])
+            && !string.IsNullOrWhiteSpace(_config["PaymentNotifications:AclGateway:AppId"])
+            && !string.IsNullOrWhiteSpace(_config["PaymentNotifications:AclGateway:UserId"])
+            && !string.IsNullOrWhiteSpace(_config["PaymentNotifications:AclGateway:Password"])
+            && !string.IsNullOrWhiteSpace(_config["PaymentNotifications:AclGateway:SenderId"]);
+    }
 
-        using var client = new HttpClient();
-        var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{accountSid}:{authToken}"));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-
-        var formData = new Dictionary<string, string>
+    private async Task SendSmsAsync(string mobile, string body, string dltTemplateSetting)
+    {
+        var gateway = _config.GetSection("PaymentNotifications:AclGateway");
+        var dltTemplateId = gateway[dltTemplateSetting];
+        if (string.IsNullOrWhiteSpace(dltTemplateId))
         {
-            ["From"] = fromNumber ?? "",
-            ["To"] = normalizedMobile,
-            ["Body"] = body
+            throw new InvalidOperationException(
+                $"ACL SMS gateway DLT template is not configured. Set PaymentNotifications:AclGateway:{dltTemplateSetting}.");
+        }
+
+        var phoneNumber = mobile.Trim();
+        if (phoneNumber.StartsWith('+'))
+        {
+            phoneNumber = phoneNumber[1..];
+        }
+        else if (!phoneNumber.StartsWith("91", StringComparison.Ordinal))
+        {
+            phoneNumber = $"91{phoneNumber}";
+        }
+
+        var queryParameters = new Dictionary<string, string>
+        {
+            ["appid"] = gateway["AppId"]!,
+            ["userId"] = gateway["UserId"]!,
+            ["pass"] = gateway["Password"]!,
+            ["contenttype"] = "1",
+            ["from"] = gateway["SenderId"]!,
+            ["to"] = phoneNumber,
+            ["text"] = body,
+            ["alert"] = "1",
+            ["selfid"] = "true",
+            ["dlrreq"] = "true",
+            ["dtm"] = dltTemplateId
         };
 
-        await client.PostAsync($"https://api.twilio.com/2010-04-01/Accounts/{accountSid}/Messages.json", new FormUrlEncodedContent(formData));
+        var queryString = string.Join("&", queryParameters.Select(parameter =>
+            $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}"));
+        var requestUrl = $"{gateway["BaseUrl"]}?{queryString}";
+
+        using var response = await _httpClientFactory.CreateClient().GetAsync(requestUrl);
+        response.EnsureSuccessStatusCode();
+
+        _logger.LogInformation("SMS sent through ACL gateway.");
     }
 }
