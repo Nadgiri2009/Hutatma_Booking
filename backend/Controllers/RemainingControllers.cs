@@ -64,6 +64,12 @@ public class UsersController : ControllerBase
 
     public UsersController(AppDbContext db) => _db = db;
 
+    [HttpGet("roles")]
+    public async Task<IActionResult> GetRoles() =>
+        Ok(await _db.Roles.OrderBy(role => role.Id)
+            .Select(role => new { role.Id, role.Name })
+            .ToListAsync());
+
     [HttpGet]
     public async Task<IActionResult> GetAll() =>
         Ok(await _db.Users.Include(u => u.Role).Select(u => new {
@@ -183,7 +189,7 @@ public class CancellationsController : ControllerBase
             c.BookingId,
             c.Reason,
             c.RequestedBy,
-            refundAmount = CalculateRefundAmount(c.Booking, c.CreatedAt),
+            refundAmount = c.RefundAmount,
             c.RefundStatus,
             c.ProcessedBy,
             c.ProcessedAt,

@@ -60,6 +60,9 @@ const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const auth     = useSelector((s: RootState) => s.auth);
+  const visibleSections = auth.role === 'Clerk'
+    ? [{ label: 'Refund Processing', items: navSections[2].items.filter((item) => item.path === '/admin/refunds') }]
+    : navSections;
 
   useEffect(() => {
     if (isMobile) setOpen(false);
@@ -92,7 +95,7 @@ const AdminLayout: React.FC = () => {
               Hutatma Smruti Mandir
             </Typography>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-              Admin Panel
+              {auth.role === 'Clerk' ? 'Clerk Panel' : 'Admin Panel'}
             </Typography>
           </Box>
         )}
@@ -102,7 +105,7 @@ const AdminLayout: React.FC = () => {
 
       {/* Nav sections */}
       <Box sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <Box key={section.label}>
             {open && (
               <Typography

@@ -48,6 +48,9 @@ export interface VenuePricing {
 }
 
 export interface VenueDetails extends Omit<Venue, 'facilities'> {
+  morningBookingCapacity: number;
+  afternoonBookingCapacity: number;
+  eveningBookingCapacity: number;
   facilities: VenueFacility[];
   images: Array<{
     id: number;
@@ -68,7 +71,7 @@ export interface Holiday {
 }
 
 export type BookingStatus = 'PendingPayment' | 'Confirmed' | 'Cancelled';
-export type SessionType   = 'Morning' | 'Evening' | 'FullDay';
+export type SessionType   = 'Morning' | 'Afternoon' | 'Evening' | 'FullDay' | string;
 export type PaymentStatus = 'Pending' | 'Paid' | 'Failed' | 'Refunded';
 
 export interface Booking {
@@ -162,6 +165,7 @@ export interface BookingSummary {
 export interface DateSlot {
   date:           string;
   morningStatus:  'Available' | 'Booked' | 'Unavailable';
+  afternoonStatus: 'Available' | 'Booked' | 'Unavailable';
   eveningStatus:  'Available' | 'Booked' | 'Unavailable';
   fullDayStatus:  'Available' | 'Booked' | 'Unavailable';
 }

@@ -46,7 +46,7 @@ const step1Schema = yup.object({
   priceItemName:  yup.string().required(),
   fromDate:   yup.string().required('From date is required'),
   toDate:     yup.string().required('To date is required'),
-  session:    yup.string().oneOf(['Morning', 'Evening', 'FullDay']).required('Please select a session'),
+  session:    yup.string().required('Please select at least one time slot'),
 });
 
 const step3Schema = yup.object({
@@ -208,16 +208,20 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   const getStatusColor = (status: string) => {
     if (status === 'Available')   return 'success';
-    if (status === 'Partially Booked') return 'warning';
+    if (status === 'booked') return 'warning';
     if (status === 'Booked' || status === 'Full') return 'error';
     return 'default';
   };
 
   // Status field on a slot that corresponds to the currently selected session
   const statusForSession = (slot: any, sess: string) => {
-    if (sess === 'Morning') return slot.morningStatus;
-    if (sess === 'Evening') return slot.eveningStatus;
-    return slot.fullDayStatus;
+    const selected = sess === 'FullDay' ? ['Morning', 'Afternoon', 'Evening'] : sess.split(',');
+    if (selected.length === 3) return slot.fullDayStatus;
+    return selected.some((name) => {
+      const session = slot.sessions?.find((item: any) => item.session === name);
+      const status = session?.status || slot[`${name.charAt(0).toLowerCase()}${name.slice(1)}Status`];
+      return status === 'Full' || status === 'Booked' || status === 'Unavailable';
+    }) ? 'Booked' : 'Available';
   };
 
   const activeSlot = slots.find((slot: any) => String(slot.date).slice(0, 10) === activeDate);
@@ -241,7 +245,7 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
       if (daySlot.availableSlots > 0) return 'partial';
       return 'full';
     }
-    const statuses = [daySlot.morningStatus, daySlot.eveningStatus];
+    const statuses = [daySlot.morningStatus, daySlot.afternoonStatus, daySlot.eveningStatus];
     const availableCount = statuses.filter((status) => status === 'Available').length;
     if (availableCount === statuses.length) return 'available';
     if (availableCount > 0) return 'partial';
@@ -469,7 +473,7 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 }, mt: 2 }}>
               {[
                 ['#2e7d32', 'Available'],
-                ['#ed6c02', 'Partially booked'],
+                ['#ed6c02', 'booked'],
                 ['#c62828', 'Fully booked'],
                 ['#94a3b8', 'Past / unavailable'],
               ].map(([color, label]) => (
@@ -518,32 +522,55 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                   render={({ field }) => (
                     <Grid container spacing={1.5}>
                       {[
-                        { value: 'Morning', status: activeSlot.morningStatus },
-                        { value: 'Evening', status: activeSlot.eveningStatus },
-                        { value: 'FullDay', label: 'Full Day', status: activeSlot.fullDayStatus },
-                      ].map((option: any) => {
-                        const optionName = option.label || option.value;
-                        const counts = activeSlot.sessions?.find((item: any) => item.session === option.value);
-                        const displayStatus = counts?.status === 'Full'
-                          ? 'Booked'
-                          : counts?.status || (option.status === 'Booked' ? 'Booked' : 'Available');
-                        const unavailable = option.status !== 'Available' || activeDate < todayKey;
-                        return (
-                          <Grid item xs={12} sm={4} key={option.value}>
-                            <Paper variant="outlined" sx={{ height: '100%', p: 1.5, borderColor: field.value === option.value ? '#50175d' : '#e2e8f0' }}>
-                              <FormControlLabel
-                                sx={{ m: 0, width: '100%', alignItems: 'flex-start' }}
-                                control={(
-                                  <Checkbox
-                                    checked={field.value === option.value}
-                                    onChange={() => field.onChange(option.value)}
-                                    disabled={unavailable}
-                                    sx={{ pt: 0.25 }}
-                                  />
+                        { value: 'Morning', time: '9:00 AM – 1:00 PM', status: activeSlot.morningStatus },
+                        { value: 'Afternoon', time: '2:00 PM – 5:00 PM', status: activeSlot.afternoonStatus },
+                        { value: 'Evening', time: '6:00 PM – 10:00 PM', status: activeSlot.eveningStatus },
+                        { value: 'FullDay', label: 'Full Day', time: '9:00 AM – 10:00 PM', status: activeSlot.fullDayStatus },
+                                      ].map((option: any) => {
+                                        const optionName = option.label || option.value;
+                                        const counts = activeSlot.sessions?.find((item: any) => item.session === option.value);
+                                        const displayStatus = counts?.status === 'Full'
+                                          ? 'Booked'
+                                          : counts?.status || (option.status === 'Booked' ? 'Booked' : 'Available');
+                                        const selectedSessions = field.value === 'FullDay'
+                                          ? ['Morning', 'Afternoon', 'Evening']
+                                          : String(field.value || '').split(',').filter(Boolean);
+                                        const checked = option.value === 'FullDay'
+                                          ? field.value === 'FullDay'
+                                          : selectedSessions.includes(option.value);
+                                        const unavailable = (option.value === 'FullDay'
+                                          ? option.status !== 'Available'
+                                          : statusForSession(activeSlot, option.value) === 'Booked')
+                                          || activeDate < todayKey
+                                          || (option.value !== 'FullDay' && field.value === 'FullDay');
+                                        const toggleSession = () => {
+                                          if (option.value === 'FullDay') {
+                                            field.onChange(checked ? '' : 'FullDay');
+                                            return;
+                                          }
+                                          const next = checked
+                                            ? selectedSessions.filter((name) => name !== option.value)
+                                            : [...selectedSessions, option.value];
+                                          const ordered = ['Morning', 'Afternoon', 'Evening'].filter((name) => next.includes(name));
+                                          field.onChange(ordered.length === 3 ? 'FullDay' : ordered.join(','));
+                                        };
+                                        return (
+                                          <Grid item xs={12} sm={6} md={3} key={option.value}>
+                                            <Paper variant="outlined" sx={{ height: '100%', p: 1.5, borderColor: checked ? '#50175d' : '#e2e8f0' }}>
+                                              <FormControlLabel
+                                                sx={{ m: 0, width: '100%', alignItems: 'flex-start' }}
+                                                control={(
+                                                  <Checkbox
+                                                    checked={checked}
+                                                    onChange={toggleSession}
+                                                    disabled={unavailable}
+                                                    sx={{ pt: 0.25 }}
+                                                  />
                                 )}
                                 label={(
                                   <Box sx={{ pt: 0.5 }}>
                                     <Typography variant="body2" fontWeight={700}>{optionName}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{option.time}</Typography>
                                     <Chip
                                       label={displayStatus}
                                       color={getStatusColor(displayStatus) as any}
@@ -574,7 +601,7 @@ const Step1Availability: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                 </Alert>
               )}
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-                A Full Day booking occupies both the Morning and Evening sessions.
+                Full Day occupies all three slots. Selecting multiple individual slots books each selected slot.
               </Typography>
             </Paper>
           )}

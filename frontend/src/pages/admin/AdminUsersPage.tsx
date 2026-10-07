@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 
 const AdminUsersPage: React.FC = () => {
   const [users, setUsers]     = useState<any[]>([]);
+  const [roles, setRoles]     = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen]       = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -22,8 +23,12 @@ const AdminUsersPage: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await api.get('/users');
-      setUsers(r.data);
+      const [usersResponse, rolesResponse] = await Promise.all([
+        api.get('/users'),
+        api.get('/users/roles'),
+      ]);
+      setUsers(usersResponse.data);
+      setRoles(rolesResponse.data);
     } catch { toast.error('Failed to load users'); }
     finally { setLoading(false); }
   };
@@ -63,7 +68,7 @@ const AdminUsersPage: React.FC = () => {
     } catch { toast.error('Failed to update user status'); }
   };
 
-  const roleColors: any = { Admin: 'error', Staff: 'warning', User: 'info' };
+  const roleColors: any = { Admin: 'error', Staff: 'warning', Clerk: 'secondary', User: 'info' };
 
   const getInitials = (name: string) =>
     name.split(' ').map((w) => w[0]).join('').toUpperCase().substring(0, 2);
@@ -172,9 +177,7 @@ const AdminUsersPage: React.FC = () => {
               <FormControl fullWidth size="small">
                 <InputLabel>Role *</InputLabel>
                 <Select defaultValue={editing?.roleId || 2} label="Role *" {...register('roleId')}>
-                  <MenuItem value={1}>Admin</MenuItem>
-                  <MenuItem value={2}>Staff</MenuItem>
-                  <MenuItem value={3}>User</MenuItem>
+                  {roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>

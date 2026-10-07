@@ -152,6 +152,10 @@ public class AppDbContext : DbContext
             .HasDefaultValue(30);
 
         mb.Entity<VenueMaster>()
+            .Property(v => v.AfternoonBookingCapacity)
+            .HasDefaultValue(30);
+
+        mb.Entity<VenueMaster>()
             .Property(v => v.EveningBookingCapacity)
             .HasDefaultValue(30);
 

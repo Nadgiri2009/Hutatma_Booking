@@ -1,6 +1,7 @@
 using HutatmaBooking.API.Data;
 using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Services.Interfaces;
+using HutatmaBooking.API.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,11 +22,13 @@ public class RefundsController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly IAuditService _audit;
 
-    public RefundsController(AppDbContext db, INotificationService notifications)
+    public RefundsController(AppDbContext db, INotificationService notifications, IAuditService audit)
     {
         _db = db;
         _notifications = notifications;
+        _audit = audit;
     }
 
     [HttpGet("lookup")]
@@ -221,6 +224,22 @@ public class RefundsController : ControllerBase
             };
             _db.RefundRequests.Add(request);
             await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                "RefundApplicationSubmitted",
+                "RefundRequests",
+                request.Id,
+                null,
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    request.RefundRequestNumber,
+                    request.Status,
+                    request.RequestedAt,
+                    booking.BookingNumber,
+                    booking.Applicant?.FullName,
+                    booking.Applicant?.Mobile,
+                    booking.GrandTotal,
+                    TotalAmountPaid = booking.Payments.Where(payment => payment.Status == "Paid").Sum(payment => payment.Amount),
+                }));
             await transaction.CommitAsync();
 
             return Ok(new
@@ -248,16 +267,65 @@ public class RefundsController : ControllerBase
     public IActionResult Apply([FromBody] ApplyRefundRequestDto dto) =>
         Conflict(new { error = "Verify the registered mobile number with an OTP before applying for a refund." });
 
+    [Authorize(Policy = "AdminOnly")]
+    [HttpPost("{bookingId:int}/admin-apply")]
+    public Task<IActionResult> ApplyForCustomer(int bookingId, [FromBody] AdminRefundApplicationDto dto) =>
+        ExecuteSerializableAsync(async () =>
+        {
+            var booking = await _db.Bookings
+                .Include(item => item.Applicant)
+                .Include(item => item.Venue)
+                .Include(item => item.Payments)
+                .Include(item => item.BankDetail)
+                .FirstOrDefaultAsync(item => item.Id == bookingId);
+            if (booking == null) return NotFound(new { error = "Booking not found." });
+            if (!BookingSlots.IsActiveBooking(booking) || !booking.Payments.Any(payment => payment.Status == "Paid"))
+                return Conflict(new { error = "An admin refund application requires an active booking with a recorded payment." });
+            if (await _db.RefundRequests.AnyAsync(item => item.BookingId == booking.Id)
+                || await _db.Cancellations.AnyAsync(item => item.BookingId == booking.Id))
+                return Conflict(new { error = "A cancellation or refund application already exists for this booking." });
+
+            var now = DateTime.UtcNow;
+            var request = new RefundRequest
+            {
+                RefundRequestNumber = $"RF-{now:yyyy}-{Guid.NewGuid():N}",
+                BookingId = booking.Id,
+                Status = "Requested",
+                RequestedAt = now,
+                UpdatedAt = now,
+            };
+            _db.RefundRequests.Add(request);
+            await _db.SaveChangesAsync();
+            await _audit.LogAsync(
+                "AdminSubmittedRefundApplication",
+                "RefundRequests",
+                request.Id,
+                null,
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    request.RefundRequestNumber,
+                    request.Status,
+                    request.RequestedAt,
+                    AdminUserId = CurrentUserId(),
+                    Reason = dto.Reason?.Trim(),
+                    booking.BookingNumber,
+                    ApplicantName = booking.Applicant?.FullName,
+                    ApplicantMobile = booking.Applicant?.Mobile,
+                    TotalAmountPaid = booking.Payments.Where(payment => payment.Status == "Paid").Sum(payment => payment.Amount),
+                }));
+            return Ok(ToAdminRequest(request));
+        });
+
     private static string? GetRefundIneligibilityReason(Booking booking)
     {
-        if (booking.Status == "Cancelled")
-            return "This booking is cancelled and must be handled through the existing cancellation refund process.";
+        if (booking.Status is "Cancelled" or "ForceCancelled" or "Force Cancelled")
+            return "This booking is cancelled and is not eligible for a new refund application.";
         if (booking.Status != "Confirmed" || !booking.Payments.Any(p => p.Status == "Paid"))
             return "A refund request requires a confirmed booking with a recorded payment.";
         return null;
     }
 
-    [Authorize(Policy = "StaffPlus")]
+    [Authorize(Policy = "RefundReviewers")]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -265,12 +333,44 @@ public class RefundsController : ControllerBase
             .Include(r => r.Booking).ThenInclude(b => b.Applicant)
             .Include(r => r.Booking).ThenInclude(b => b.Venue)
             .Include(r => r.Booking).ThenInclude(b => b.Payments)
+            .Include(r => r.Booking).ThenInclude(b => b.BankDetail)
             .OrderByDescending(r => r.RequestedAt)
             .ToListAsync();
         return Ok(requests.Select(ToAdminRequest));
     }
 
-    [Authorize(Policy = "StaffPlus")]
+    [Authorize(Policy = "RefundReviewers")]
+    [HttpGet("{id:int}/history")]
+    public async Task<IActionResult> GetHistory(int id)
+    {
+        var request = await _db.RefundRequests.AsNoTracking()
+            .Where(item => item.Id == id)
+            .Select(item => new { item.Id, item.BookingId, item.Booking.Status })
+            .FirstOrDefaultAsync();
+        if (request == null) return NotFound();
+        var isForceCancelled = request.Status == "ForceCancelled" || request.Status == "Force Cancelled";
+
+        var history = await _db.AuditLogs.AsNoTracking()
+            .Where(item =>
+                (item.TableName == "RefundRequests" && item.RecordId == id)
+                || (isForceCancelled
+                    && item.TableName == "Bookings"
+                    && item.RecordId == request.BookingId
+                    && item.Action == "ForceCancelled"))
+            .OrderBy(item => item.CreatedAt)
+            .Select(item => new
+            {
+                item.Action,
+                item.UserId,
+                item.CreatedAt,
+                item.OldValues,
+                item.NewValues,
+            })
+            .ToListAsync();
+        return Ok(history);
+    }
+
+    [Authorize(Policy = "ClerkOnly")]
     [HttpPut("{id:int}/verify")]
     public Task<IActionResult> Verify(int id) => UpdateStatus(id, "Requested", request =>
     {
@@ -278,81 +378,205 @@ public class RefundsController : ControllerBase
         request.VerifiedAt = DateTime.UtcNow;
         request.VerifiedBy = CurrentUserId();
         request.UpdatedAt = DateTime.UtcNow;
-    });
+        return Task.CompletedTask;
+    }, "ClerkStartedReview");
 
-    [Authorize(Policy = "StaffPlus")]
+    [Authorize(Policy = "ClerkOnly")]
+    [HttpPut("{id:int}/review")]
+    public Task<IActionResult> Review(int id, [FromBody] ReviewRefundRequestDto dto) =>
+        ExecuteSerializableAsync(async () =>
+        {
+        var request = await _db.RefundRequests
+            .Include(r => r.Booking).ThenInclude(b => b.Payments)
+            .Include(r => r.Booking).ThenInclude(b => b.Applicant)
+            .Include(r => r.Booking).ThenInclude(b => b.Venue)
+            .Include(r => r.Booking).ThenInclude(b => b.BankDetail)
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (request == null) return NotFound();
+        if (request.Status != "Under Verification")
+            return Conflict(new { error = "Only refund requests under verification can be processed by the Clerk." });
+
+        var paidAmount = request.Booking.Payments.Where(payment => payment.Status == "Paid").Sum(payment => payment.Amount);
+        var isForceCancellation = request.Booking.Status is "ForceCancelled" or "Force Cancelled";
+        if (dto.RefundAmount <= 0 || dto.RefundAmount > paidAmount)
+            return BadRequest(new { error = "The recommended refund amount must be greater than zero and cannot exceed the recorded paid amount." });
+        if (isForceCancellation && dto.RefundAmount != paidAmount)
+            return BadRequest(new { error = "A force-cancelled booking must be recommended for a full refund of the amount paid." });
+
+        request.RefundAmount = dto.RefundAmount;
+        request.Status = "Clerk Processed";
+        request.VerifiedBy = CurrentUserId();
+        request.VerifiedAt = DateTime.UtcNow;
+        request.UpdatedAt = DateTime.UtcNow;
+        await UpdateForceCancellationStatusAsync(request, request.Status);
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync(
+            "ClerkProcessedRefund",
+            "RefundRequests",
+            request.Id,
+            "Under Verification",
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                request.Status,
+                request.RefundAmount,
+                ClerkUserId = CurrentUserId(),
+                ProcessedAt = request.VerifiedAt,
+                Recommendation = dto.Recommendation,
+            }));
+        return Ok(ToAdminRequest(request));
+        });
+
+    [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id:int}/approve")]
-    public async Task<IActionResult> Approve(int id, [FromBody] ApproveRefundRequestDto dto)
-    {
+    public Task<IActionResult> Approve(int id, [FromBody] ApproveRefundRequestDto dto) =>
+        ExecuteSerializableAsync(async () =>
+        {
         var request = await _db.RefundRequests
             .Include(r => r.Booking).ThenInclude(b => b.Applicant)
             .Include(r => r.Booking).ThenInclude(b => b.Venue)
             .Include(r => r.Booking).ThenInclude(b => b.Payments)
+            .Include(r => r.Booking).ThenInclude(b => b.BankDetail)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
-        if (request.Status != "Under Verification")
-            return Conflict(new { error = "Only refund requests under verification can be approved." });
+        if (request.Status != "Clerk Processed")
+            return Conflict(new { error = "Only refund requests processed by a Clerk can be approved." });
         var paidAmount = request.Booking.Payments.Where(p => p.Status == "Paid").Sum(p => p.Amount);
         if (dto.RefundAmount <= 0 || dto.RefundAmount > paidAmount)
             return BadRequest(new { error = "The approved refund amount must be greater than zero and cannot exceed the recorded paid amount." });
+        if ((request.Booking.Status is "ForceCancelled" or "Force Cancelled") && dto.RefundAmount != paidAmount)
+            return BadRequest(new { error = "A force-cancelled booking must be approved for a full refund of the amount paid." });
 
+        var oldStatus = request.Status;
         request.RefundAmount = dto.RefundAmount;
         request.Status = "Approved";
         request.ApprovedAt = DateTime.UtcNow;
         request.ApprovedBy = CurrentUserId();
         request.UpdatedAt = DateTime.UtcNow;
+        await UpdateForceCancellationStatusAsync(request, request.Status);
         await _db.SaveChangesAsync();
+        await _audit.LogAsync(
+            "AdminApprovedRefund",
+            "RefundRequests",
+            request.Id,
+            oldStatus,
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                request.Status,
+                request.RefundAmount,
+                AdminUserId = CurrentUserId(),
+                request.ApprovedAt,
+            }));
         return Ok(ToAdminRequest(request));
-    }
+        });
 
-    [Authorize(Policy = "StaffPlus")]
+    [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id:int}/reject")]
-    public async Task<IActionResult> Reject(int id, [FromBody] RejectRefundRequestDto dto)
-    {
-        var request = await _db.RefundRequests.FirstOrDefaultAsync(r => r.Id == id);
+    public Task<IActionResult> Reject(int id, [FromBody] RejectRefundRequestDto dto) =>
+        ExecuteSerializableAsync(async () =>
+        {
+        var request = await _db.RefundRequests.Include(r => r.Booking).FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
-        if (request.Status != "Requested")
-            return Conflict(new { error = "A refund request cannot be rejected after verification." });
+        if (request.Status != "Clerk Processed")
+            return Conflict(new { error = "Only refund requests processed by a Clerk can be rejected." });
+        if (request.Booking.Status is "ForceCancelled" or "Force Cancelled")
+            return Conflict(new { error = "A force-cancellation refund must be approved for the full amount paid." });
 
+        var oldStatus = request.Status;
         request.Status = "Rejected";
         request.RejectionReason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim();
+        request.ApprovedBy = CurrentUserId();
+        request.ApprovedAt = DateTime.UtcNow;
         request.UpdatedAt = DateTime.UtcNow;
+        await UpdateForceCancellationStatusAsync(request, request.Status);
         await _db.SaveChangesAsync();
+        await _audit.LogAsync(
+            "AdminRejectedRefund",
+            "RefundRequests",
+            request.Id,
+            oldStatus,
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                request.Status,
+                AdminUserId = CurrentUserId(),
+                request.ApprovedAt,
+                request.RejectionReason,
+                bookingStatus = request.Booking.Status,
+            }));
         return Ok(new { request.Id, request.Status, request.RejectionReason });
-    }
+        });
 
-    [Authorize(Policy = "StaffPlus")]
+    [Authorize(Policy = "ClerkOnly")]
     [HttpPut("{id:int}/start-processing")]
     public Task<IActionResult> StartProcessing(int id) => UpdateStatus(id, "Approved", request =>
     {
         request.Status = "Processing";
         request.UpdatedAt = DateTime.UtcNow;
-    });
+        return Task.CompletedTask;
+    }, "ClerkStartedRefundProcessing");
 
-    [Authorize(Policy = "StaffPlus")]
+    [Authorize(Policy = "ClerkOnly")]
     [HttpPut("{id:int}/process")]
-    public Task<IActionResult> Process(int id) => UpdateStatus(id, "Processing", request =>
-    {
-        request.Status = "Processed";
-        request.ProcessedAt = DateTime.UtcNow;
-        request.ProcessedBy = CurrentUserId();
-        request.UpdatedAt = DateTime.UtcNow;
-    });
+    public Task<IActionResult> Process(int id, [FromBody] CompleteRefundRequestDto dto) =>
+        UpdateStatus(id, "Processing", async request =>
+        {
+            request.Status = "Processed";
+            request.ProcessedAt = DateTime.UtcNow;
+            request.ProcessedBy = CurrentUserId();
+            request.UpdatedAt = DateTime.UtcNow;
+            await UpdateForceCancellationStatusAsync(request, request.Status, markProcessed: true);
+        }, "ClerkCompletedRefund", System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Status = "Processed",
+            RefundTransactionReference = dto.RefundTransactionReference?.Trim(),
+        }));
 
-    private async Task<IActionResult> UpdateStatus(int id, string expectedStatus, Action<RefundRequest> update)
+    private async Task<IActionResult> UpdateStatus(
+        int id,
+        string expectedStatus,
+        Func<RefundRequest, Task> update,
+        string auditAction,
+        string? auditNewValues = null) => await ExecuteSerializableAsync(async () =>
     {
         var request = await _db.RefundRequests
             .Include(r => r.Booking).ThenInclude(b => b.Applicant)
             .Include(r => r.Booking).ThenInclude(b => b.Venue)
             .Include(r => r.Booking).ThenInclude(b => b.Payments)
+            .Include(r => r.Booking).ThenInclude(b => b.BankDetail)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
         if (request.Status != expectedStatus)
             return Conflict(new { error = $"This action requires status '{expectedStatus}'." });
-        update(request);
+        var oldStatus = request.Status;
+        await update(request);
+        await UpdateForceCancellationStatusAsync(request, request.Status);
         await _db.SaveChangesAsync();
+        await _audit.LogAsync(auditAction, "RefundRequests", request.Id, oldStatus, auditNewValues ?? request.Status);
         return Ok(ToAdminRequest(request));
+    });
+
+    private async Task UpdateForceCancellationStatusAsync(RefundRequest request, string status, bool markProcessed = false)
+    {
+        if (request.Booking.Status is not ("ForceCancelled" or "Force Cancelled")) return;
+        var cancellation = await _db.Cancellations.FirstOrDefaultAsync(item => item.BookingId == request.BookingId);
+        if (cancellation == null) return;
+        cancellation.RefundStatus = status;
+        cancellation.RefundAmount = request.RefundAmount ?? cancellation.RefundAmount;
+        if (markProcessed)
+        {
+            cancellation.ProcessedAt = request.ProcessedAt;
+            cancellation.ProcessedBy = request.ProcessedBy;
+        }
     }
+
+    private Task<IActionResult> ExecuteSerializableAsync(Func<Task<IActionResult>> action) =>
+        _db.Database.CreateExecutionStrategy().ExecuteAsync<IActionResult>(async () =>
+        {
+            _db.ChangeTracker.Clear();
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var result = await action();
+            await transaction.CommitAsync();
+            return result;
+        });
 
     private int? CurrentUserId()
     {
@@ -432,16 +656,41 @@ public class RefundsController : ControllerBase
             request.ApprovedBy,
             request.ProcessedAt,
             request.ProcessedBy,
+            clerkProcessedAt = request.VerifiedAt,
+            clerkProcessedBy = request.VerifiedBy,
             request.RejectionReason,
+            bookingStatus = booking.Status,
             applicationNumber = booking.BookingNumber,
             applicantName = booking.Applicant?.FullName ?? "",
+            applicantEmail = booking.Applicant?.Email ?? "",
             contactNumber = booking.Applicant?.Mobile ?? "",
+            applicantAlternateMobile = booking.Applicant?.AlternateMobile,
+            applicantAddress = booking.Applicant?.Address ?? "",
+            functionName = booking.Applicant?.FunctionName ?? "",
+            functionType = booking.Applicant?.FunctionType ?? "",
+            expectedGuests = booking.Applicant?.ExpectedGuests ?? 0,
+            idProofType = booking.Applicant?.IDProofType ?? "",
+            idProofFile = booking.Applicant?.IDProofFile,
             venue = booking.Venue.VenueName,
             booking.FromDate,
             booking.ToDate,
             booking.Session,
             bookingAmount = booking.GrandTotal,
+            baseRent = booking.BaseRent,
+            holidayCharge = booking.HolidayCharge,
+            equipmentCharge = booking.EquipmentCharge,
+            cgstAmount = booking.CGSTAmount,
+            sgstAmount = booking.SGSTAmount,
             depositAmount = booking.SecurityDeposit,
+            bankDetails = booking.BankDetail == null ? null : new
+            {
+                booking.BankDetail.BankName,
+                booking.BankDetail.AccountHolderName,
+                booking.BankDetail.AccountNumber,
+                booking.BankDetail.IFSCCode,
+                booking.BankDetail.BranchName,
+                booking.BankDetail.MICRCode,
+            },
             paymentReferences = booking.Payments.Where(p => p.Status == "Paid").Select(p => new
             {
                 p.Amount,
@@ -514,5 +763,24 @@ public class ApproveRefundRequestDto
 
 public class RejectRefundRequestDto
 {
+    public string? Reason { get; set; }
+}
+
+public class ReviewRefundRequestDto
+{
+    public decimal RefundAmount { get; set; }
+    [System.ComponentModel.DataAnnotations.MaxLength(1000)]
+    public string? Recommendation { get; set; }
+}
+
+public class CompleteRefundRequestDto
+{
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string? RefundTransactionReference { get; set; }
+}
+
+public class AdminRefundApplicationDto
+{
+    [System.ComponentModel.DataAnnotations.MaxLength(1000)]
     public string? Reason { get; set; }
 }

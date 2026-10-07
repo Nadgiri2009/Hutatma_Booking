@@ -42,6 +42,9 @@ export const bookingAPI = {
   checkAvailability: (data: any) => api.post('/bookings/availability', data),
   getSummary:        (data: any) => api.post('/bookings/summary', data),
   create:            (data: any) => api.post('/bookings', data),
+  createForAdmin:    (data: any) => api.post('/bookings/admin', data),
+  changeDate:        (id: number, newFromDate: string) => api.put(`/bookings/${id}/date`, { newFromDate }),
+  forceCancel:       (id: number) => api.post(`/bookings/${id}/force-cancel`),
   getByNumber:       (num: string)   => api.get(`/bookings/number/${num}`),
   getByMobile:       (mob: string)   => api.get(`/bookings/mobile/${mob}`),
   getAll:            (params: any)   => api.get('/bookings', { params }),
@@ -51,14 +54,19 @@ export const bookingAPI = {
 export const refundAPI = {
   lookup: (params: { bookingNumber?: string; mobile?: string }) => api.get('/refunds/lookup', { params }),
   track: (params: { refundRequestNumber?: string; bookingNumber?: string; mobile?: string }) => api.get('/refunds/track', { params }),
+  adminApply: (bookingId: number, reason?: string) => api.post(`/refunds/${bookingId}/admin-apply`, { reason }),
   requestOtp: (bookingId: number, mobile: string) => api.post(`/refunds/${bookingId}/request-otp`, { mobile }),
   applyVerified: (bookingId: number, mobile: string, otp: string) => api.post(`/refunds/${bookingId}/apply-verified`, { mobile, otp }),
   getAll: () => api.get('/refunds'),
+  history: (id: number) => api.get(`/refunds/${id}/history`),
   verify: (id: number) => api.put(`/refunds/${id}/verify`),
+  review: (id: number, refundAmount: number, recommendation?: string) =>
+    api.put(`/refunds/${id}/review`, { refundAmount, recommendation }),
   approve: (id: number, refundAmount: number) => api.put(`/refunds/${id}/approve`, { refundAmount }),
   reject: (id: number, reason: string) => api.put(`/refunds/${id}/reject`, { reason }),
   startProcessing: (id: number) => api.put(`/refunds/${id}/start-processing`),
-  process: (id: number) => api.put(`/refunds/${id}/process`),
+  process: (id: number, refundTransactionReference?: string) =>
+    api.put(`/refunds/${id}/process`, { refundTransactionReference }),
 };
 
 export const cancellationAPI = {
@@ -77,7 +85,7 @@ export const venueAPI = {
   getAllForAdmin: ()                          => api.get('/venues/admin/all'),
   updatePricing:  (id: number, data: any)     => api.put(`/venues/pricing/${id}`, data),
   createVenue:    (data: any)                 => api.post('/venues/admin', data),
-  updateBookingCapacity: (id: number, session: 'Morning' | 'Evening', capacity: number) =>
+  updateBookingCapacity: (id: number, session: 'Morning' | 'Afternoon' | 'Evening', capacity: number) =>
     api.put(`/venues/${id}/booking-capacity`, { session, capacity }),
   createPricing:  (venueId: number, data: any) => api.post(`/venues/${venueId}/pricing`, data),
   removeVenue:    (id: number)                => api.delete(`/venues/${id}`),

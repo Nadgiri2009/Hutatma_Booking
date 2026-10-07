@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using HutatmaBooking.API.Models;
 using Serilog;
 using System;
 
@@ -13,6 +14,11 @@ namespace HutatmaBooking.API.Data
 
             // 1. Automatically handle migrations
             context.Database.Migrate();
+            if (!context.Roles.Any(role => role.Name == "Clerk"))
+            {
+                context.Roles.Add(new Role { Name = "Clerk", Description = "Refund review and processing" });
+                context.SaveChanges();
+            }
 
             // 2. Safely seed data if tables are empty
             try

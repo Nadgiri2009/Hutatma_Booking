@@ -82,6 +82,9 @@ public class NotificationService : INotificationService
 
     private async Task SendEmailAsync(string toEmail, string subject, string body)
     {
+        var fromEmail = _config["PaymentNotifications:Smtp:FromEmail"]
+            ?? throw new InvalidOperationException("SMTP sender email is not configured.");
+
         using var client = new SmtpClient(_config["PaymentNotifications:Smtp:Host"])
         {
             Port = int.Parse(_config["PaymentNotifications:Smtp:Port"] ?? "587"),
@@ -92,7 +95,7 @@ public class NotificationService : INotificationService
         };
 
         using var message = new MailMessage(
-            _config["PaymentNotifications:Smtp:FromEmail"],
+            fromEmail,
             toEmail,
             subject,
             body)

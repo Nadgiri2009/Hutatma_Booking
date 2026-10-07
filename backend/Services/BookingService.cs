@@ -2,6 +2,7 @@ using HutatmaBooking.API.DTOs;
 using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Repositories.Interfaces;
 using HutatmaBooking.API.Services.Interfaces;
+using HutatmaBooking.API.Utils;
 
 namespace HutatmaBooking.API.Services;
 
@@ -32,22 +33,12 @@ public class BookingService : IBookingService
 
     // ─── AVAILABILITY ───────────────────────────────────────────────────────────
 
-    private static readonly HashSet<string> ValidSessions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Morning", "Evening", "FullDay"
-    };
-
-    private static int GetSelectedSlotsPerDay(string? session)
-    {
-        if (string.IsNullOrWhiteSpace(session)) return 1;
-
-        return session.Trim().Equals("FullDay", StringComparison.OrdinalIgnoreCase) ? 2 : 1;
-    }
+    private static int GetSelectedSlotsPerDay(string? session) => BookingSlots.CountPerDay(session ?? "");
 
     public async Task<AvailabilityResponseDto> CheckAvailabilityAsync(AvailabilityRequestDto req)
     {
         var venue = await _bookingRepo.GetVenueCapacityAsync(req.VenueId);
-        if (venue == null || venue.MorningBookingCapacity <= 0 || venue.EveningBookingCapacity <= 0)
+        if (venue == null || BookingSlots.OrderedSessions.Any(session => BookingSlots.CapacityFor(venue, session) <= 0))
             throw new InvalidOperationException("Booking capacity is not configured for the selected venue.");
 
         var existingBookings = await _bookingRepo.GetBookingsForDateRangeAsync(
@@ -61,57 +52,60 @@ public class BookingService : IBookingService
                 .Where(b => b.FromDate <= day && b.ToDate >= day)
                 .ToList();
 
-            var activeBookings = bookingsForDay.Where(b => b.Status != "Cancelled").ToList();
-            var fullDayTaken = activeBookings.Any(b => b.Session.Equals("FullDay", StringComparison.OrdinalIgnoreCase));
-            var morningBookingCount = activeBookings.Count(b => b.Session.Equals("Morning", StringComparison.OrdinalIgnoreCase));
-            var eveningBookingCount = activeBookings.Count(b => b.Session.Equals("Evening", StringComparison.OrdinalIgnoreCase));
-            var morningTaken = fullDayTaken || morningBookingCount >= venue.MorningBookingCapacity;
-            var eveningTaken = fullDayTaken || eveningBookingCount >= venue.EveningBookingCapacity;
-            var fullDayUnavailable = activeBookings.Count > 0;
-            var morningBookedSlots = fullDayTaken ? venue.MorningBookingCapacity : morningBookingCount;
-            var eveningBookedSlots = fullDayTaken ? venue.EveningBookingCapacity : eveningBookingCount;
-            var bookedSlots = morningBookedSlots + eveningBookedSlots;
-            var sessions = new List<SessionAvailabilityDto>
+            var activeBookings = bookingsForDay.Where(BookingSlots.IsActiveBooking).ToList();
+            var fullDayTaken = activeBookings.Any(booking =>
+                BookingSlots.TryParse(booking.Session, out var selected)
+                && selected.Count == BookingSlots.OrderedSessions.Length);
+            var counts = BookingSlots.OrderedSessions.ToDictionary(
+                session => session,
+                session => activeBookings.Count(booking =>
+                    BookingSlots.TryParse(booking.Session, out var bookedSessions)
+                    && bookedSessions.Contains(session, StringComparer.OrdinalIgnoreCase)));
+            var slotAvailability = BookingSlots.OrderedSessions.Select(session =>
             {
-                new()
+                var capacity = BookingSlots.CapacityFor(venue, session);
+                var booked = fullDayTaken ? 1 : Math.Min(1, counts[session]);
+                var available = fullDayTaken || booked > 0 || capacity <= 0 ? 0 : 1;
+                return new SessionAvailabilityDto
                 {
-                    Session = "Morning",
-                    TotalSlots = venue.MorningBookingCapacity,
-                    BookedSlots = morningBookedSlots,
-                    AvailableSlots = fullDayTaken ? 0 : Math.Max(0, venue.MorningBookingCapacity - morningBookingCount),
-                    Status = morningTaken ? "Full" : morningBookingCount > 0 ? "Partially Booked" : "Available",
-                },
-                new()
-                {
-                    Session = "Evening",
-                    TotalSlots = venue.EveningBookingCapacity,
-                    BookedSlots = eveningBookedSlots,
-                    AvailableSlots = fullDayTaken ? 0 : Math.Max(0, venue.EveningBookingCapacity - eveningBookingCount),
-                    Status = eveningTaken ? "Full" : eveningBookingCount > 0 ? "Partially Booked" : "Available",
-                },
-                new()
-                {
-                    Session = "FullDay",
-                    TotalSlots = 1,
-                    BookedSlots = fullDayTaken ? 1 : 0,
-                    AvailableSlots = fullDayUnavailable ? 0 : 1,
-                    Status = fullDayTaken ? "Full" : fullDayUnavailable ? "Unavailable" : "Available",
-                },
-            };
-            var totalSlots = venue.MorningBookingCapacity + venue.EveningBookingCapacity;
+                    Session = session,
+                    TotalSlots = capacity > 0 ? 1 : 0,
+                    BookedSlots = booked,
+                    AvailableSlots = available,
+                    Status = available == 0 ? "Full" : "Available"
+                };
+            }).ToList();
+            var fullDayUnavailable = activeBookings.Count > 0;
+            slotAvailability.Add(new SessionAvailabilityDto
+            {
+                Session = "FullDay",
+                TotalSlots = 1,
+                BookedSlots = fullDayTaken ? 1 : 0,
+                AvailableSlots = fullDayUnavailable ? 0 : 1,
+                Status = fullDayTaken ? "Full" : fullDayUnavailable ? "Unavailable" : "Available",
+            });
+            var morning = slotAvailability[0];
+            var afternoon = slotAvailability[1];
+            var evening = slotAvailability[2];
+            var bookedSlots = morning.BookedSlots + afternoon.BookedSlots + evening.BookedSlots;
+            var totalSlots = BookingSlots.OrderedSessions.Count(session => BookingSlots.CapacityFor(venue, session) > 0);
             var availableSlots = totalSlots - bookedSlots;
 
             dateSlots.Add(new DateSlotDto
             {
-                Date          = d,
-                MorningStatus = morningTaken ? "Booked" : "Available",
-                EveningStatus = eveningTaken ? "Booked" : "Available",
+                Date = d,
+                MorningStatus = morning.AvailableSlots == 0 ? "Booked" : "Available",
+                AfternoonStatus = afternoon.AvailableSlots == 0 ? "Booked" : "Available",
+                EveningStatus = evening.AvailableSlots == 0 ? "Booked" : "Available",
                 FullDayStatus = fullDayUnavailable ? "Booked" : "Available",
-                TotalSlots    = totalSlots,
-                BookedSlots   = bookedSlots,
+                TotalSlots = totalSlots,
+                BookedSlots = bookedSlots,
                 AvailableSlots = availableSlots,
-                CancelledBookingCount = bookingsForDay.Count(b => b.Status == "Cancelled"),
-                Sessions      = sessions,
+                CancelledBookingCount = bookingsForDay.Count(b =>
+                    b.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
+                    || b.Status.Equals("ForceCancelled", StringComparison.OrdinalIgnoreCase)
+                    || b.Status.Equals("Force Cancelled", StringComparison.OrdinalIgnoreCase)),
+                Sessions = slotAvailability,
             });
         }
         return new AvailabilityResponseDto { Slots = dateSlots };
@@ -127,27 +121,10 @@ public class BookingService : IBookingService
     public async Task<bool> HasConflictAsync(int venueId, DateOnly fromDate, DateOnly toDate, string session)
     {
         var venue = await _bookingRepo.GetVenueCapacityAsync(venueId);
-        if (venue == null || venue.MorningBookingCapacity <= 0 || venue.EveningBookingCapacity <= 0) return true;
+        if (venue == null || BookingSlots.OrderedSessions.Any(slot => BookingSlots.CapacityFor(venue, slot) <= 0)) return true;
         var existing = await _bookingRepo.GetBookingsForDateRangeAsync(
             venueId, fromDate.ToDateTime(TimeOnly.MinValue), toDate.ToDateTime(TimeOnly.MaxValue));
-        var activeBookings = existing.Where(booking => booking.Status != "Cancelled").ToList();
-        if (activeBookings.Any(booking => booking.Session.Equals("FullDay", StringComparison.OrdinalIgnoreCase)))
-            return true;
-        if (session.Equals("FullDay", StringComparison.OrdinalIgnoreCase))
-            return activeBookings.Count > 0;
-
-        for (var date = fromDate; date <= toDate; date = date.AddDays(1))
-        {
-            var bookingsForSession = activeBookings.Count(booking =>
-                booking.Session.Equals(session, StringComparison.OrdinalIgnoreCase)
-                && booking.FromDate <= date
-                && booking.ToDate >= date);
-            var capacity = session.Equals("Morning", StringComparison.OrdinalIgnoreCase)
-                ? venue.MorningBookingCapacity
-                : venue.EveningBookingCapacity;
-            if (bookingsForSession >= capacity) return true;
-        }
-        return false;
+        return BookingSlots.HasCapacityConflict(existing, fromDate, toDate, session, venue);
     }
 
     // ─── SUMMARY CALCULATION ─────────────────────────────────────────────────
@@ -217,9 +194,10 @@ public class BookingService : IBookingService
 
     public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto dto)
     {
-        var session = string.IsNullOrWhiteSpace(dto.Session) ? "FullDay" : dto.Session;
-        if (!ValidSessions.Contains(session))
-            throw new InvalidOperationException("Session must be one of: Morning, Evening, FullDay.");
+        var suppliedSession = string.IsNullOrWhiteSpace(dto.Session) ? "FullDay" : dto.Session;
+        if (!BookingSlots.TryParse(suppliedSession, out var selectedSessions))
+            throw new InvalidOperationException("Session must be Morning, Afternoon, Evening, FullDay, or a comma-separated combination of individual slots.");
+        var session = BookingSlots.Normalize(selectedSessions);
 
         // Validate conflicts first (also re-checked here at submission time to
         // close the race-condition window between availability check and

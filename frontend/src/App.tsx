@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Provider, useSelector } from 'react-redux';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
@@ -32,8 +32,12 @@ import AdminAuditPage from './pages/admin/AdminAuditPage';
 const PublicLayout: React.FC = () => (<><PublicNavbar /><Outlet /></>);
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { isAuthenticated, role } = useSelector((s: RootState) => s.auth);
+  const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
+  if (role === 'Clerk' && location.pathname !== '/admin/refunds') {
+    return <Navigate to="/admin/refunds" replace />;
+  }
   return <>{children}</>;
 };
 
@@ -51,6 +55,7 @@ const AppRoutes: React.FC = () => (
       <Route path="/book"          element={<BookingPage />} />
     </Route>
     <Route path="/admin/login" element={<AdminLoginPage />} />
+    <Route path="/clerk/login" element={<AdminLoginPage clerkMode />} />
     <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
       <Route index               element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="dashboard"    element={<AdminDashboard />} />

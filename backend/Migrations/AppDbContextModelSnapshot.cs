@@ -1026,6 +1026,11 @@ namespace HutatmaBooking.API.Migrations
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
 
+                    b.Property<int>("AfternoonBookingCapacity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
                     b.Property<int>("EveningBookingCapacity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")

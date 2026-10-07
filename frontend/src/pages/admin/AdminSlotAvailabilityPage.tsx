@@ -11,7 +11,7 @@ import { bookingAPI, venueAPI } from '../../services/api';
 import { RootState } from '../../store/store';
 import { toast } from 'react-toastify';
 
-type CapacitySession = 'Morning' | 'Evening' | 'FullDay';
+type CapacitySession = 'Morning' | 'Afternoon' | 'Evening' | 'FullDay';
 
 const localDateValue = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -76,6 +76,7 @@ const AdminSlotAvailabilityPage: React.FC = () => {
     ? availability.sessions
     : availability ? [
         { session: 'Morning', totalSlots: null, bookedSlots: null, availableSlots: null, status: availability.morningStatus },
+        { session: 'Afternoon', totalSlots: null, bookedSlots: null, availableSlots: null, status: availability.afternoonStatus },
         { session: 'Evening', totalSlots: null, bookedSlots: null, availableSlots: null, status: availability.eveningStatus },
         { session: 'FullDay', totalSlots: 1, bookedSlots: availability.fullDayStatus === 'Booked' ? 1 : 0, availableSlots: availability.fullDayStatus === 'Available' ? 1 : 0, status: availability.fullDayStatus === 'Booked' ? 'Full' : 'Available' },
       ] : [];
@@ -98,9 +99,11 @@ const AdminSlotAvailabilityPage: React.FC = () => {
     }
     const capacity = capacitySession === 'Morning'
       ? selectedVenue?.morningBookingCapacity
-      : capacitySession === 'Evening'
-        ? selectedVenue?.eveningBookingCapacity
-        : 1;
+      : capacitySession === 'Afternoon'
+        ? selectedVenue?.afternoonBookingCapacity
+        : capacitySession === 'Evening'
+          ? selectedVenue?.eveningBookingCapacity
+          : 1;
     setCapacityValue(capacity || 1);
     setCapacityDialogStep('edit-capacity');
   };
@@ -111,7 +114,7 @@ const AdminSlotAvailabilityPage: React.FC = () => {
     && capacityValue < (capacitySessionStats?.bookedSlots || 0);
 
   const saveCapacity = async () => {
-    if (!selectedVenue || (capacitySession !== 'Morning' && capacitySession !== 'Evening')
+    if (!selectedVenue || (capacitySession !== 'Morning' && capacitySession !== 'Afternoon' && capacitySession !== 'Evening')
         || !Number.isInteger(capacityValue) || capacityValue < 1) {
       toast.error('Capacity must be a whole number greater than zero.');
       return;
@@ -125,7 +128,7 @@ const AdminSlotAvailabilityPage: React.FC = () => {
       const response = await venueAPI.updateBookingCapacity(selectedVenue.venueId, capacitySession, capacityValue);
       const savedCapacity = response.data.capacity;
       setVenues((current) => current.map((venue) => venue.venueId === selectedVenue.venueId
-        ? { ...venue, [capacitySession === 'Morning' ? 'morningBookingCapacity' : 'eveningBookingCapacity']: savedCapacity }
+        ? { ...venue, [`${capacitySession.toLowerCase()}BookingCapacity`]: savedCapacity }
         : venue));
       setCapacityDialogOpen(false);
       setRefreshKey((current) => current + 1);

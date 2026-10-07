@@ -36,7 +36,7 @@ public class AuthService : IAuthService
     {
         var normalizedMobile = mobile.Trim();
         var user = await _userRepo.GetAdminByMobileAsync(normalizedMobile);
-        if (user == null || !user.IsActive || user.Role.Name is not ("Admin" or "Staff"))
+        if (user == null || !user.IsActive || user.Role.Name is not ("Admin" or "Staff" or "Clerk"))
         {
             _logger.LogInformation("Admin OTP request ignored for an ineligible account.");
             return;
@@ -69,7 +69,7 @@ public class AuthService : IAuthService
     {
         var normalizedMobile = mobile.Trim();
         var user = await _userRepo.GetAdminByMobileAsync(normalizedMobile);
-        if (user == null || !user.IsActive || user.Role.Name is not ("Admin" or "Staff"))
+        if (user == null || !user.IsActive || user.Role.Name is not ("Admin" or "Staff" or "Clerk"))
         {
             _logger.LogWarning("Admin OTP verification failed because the account is no longer eligible.");
             return null;

@@ -40,6 +40,7 @@ public class DateSlotDto
 {
     public DateTime Date          { get; set; }
     public string   MorningStatus { get; set; } = "";
+    public string   AfternoonStatus { get; set; } = "";
     public string   EveningStatus { get; set; } = "";
     public string   FullDayStatus { get; set; } = "";
     public int      TotalSlots    { get; set; }
@@ -112,6 +113,12 @@ public class CreateBookingDto
     public ApplicantDto  Applicant  { get; set; } = new();
     public BankDetailDto BankDetail { get; set; } = new();
 }
+
+public class ChangeBookingDateDto
+{
+    public DateTime NewFromDate { get; set; }
+}
+
 public class ApplicantDto
 {
     public string  FullName        { get; set; } = "";

@@ -2,6 +2,7 @@ using HutatmaBooking.API.Data;
 using HutatmaBooking.API.DTOs;
 using HutatmaBooking.API.Models;
 using HutatmaBooking.API.Repositories.Interfaces;
+using HutatmaBooking.API.Utils;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
@@ -110,22 +111,20 @@ public class BookingRepository : IBookingRepository
             try
             {
                 var venue = await GetVenueCapacityAsync(booking.VenueId);
-                if (venue == null || venue.MorningBookingCapacity <= 0 || venue.EveningBookingCapacity <= 0)
+                if (venue == null || BookingSlots.OrderedSessions.Any(session =>
+                        BookingSlots.CapacityFor(venue, session) <= 0))
                     throw new InvalidOperationException("Booking capacity is not configured for the selected venue.");
 
                 var existingBookings = await _db.Bookings
                     .Where(existing => existing.VenueId == booking.VenueId
                         && existing.Status != "Cancelled"
+                        && existing.Status != "ForceCancelled"
+                        && existing.Status != "Force Cancelled"
                         && existing.FromDate <= booking.ToDate
                         && existing.ToDate >= booking.FromDate)
                     .ToListAsync();
-                if (HasCapacityConflict(
-                    existingBookings,
-                    booking.FromDate,
-                    booking.ToDate,
-                    booking.Session,
-                    venue.MorningBookingCapacity,
-                    venue.EveningBookingCapacity))
+                if (BookingSlots.HasCapacityConflict(
+                    existingBookings, booking.FromDate, booking.ToDate, booking.Session, venue))
                     throw new InvalidOperationException("Selected session has reached its booking capacity for one or more dates.");
 
                 _db.Bookings.Add(booking);
@@ -177,34 +176,6 @@ public class BookingRepository : IBookingRepository
     public async Task<int> GetCountForYearAsync(int year) =>
         await _db.Bookings.CountAsync(b => b.CreatedAt.Year == year);
 
-    private static bool HasCapacityConflict(
-        IEnumerable<Booking> bookings,
-        DateOnly fromDate,
-        DateOnly toDate,
-        string session,
-        int morningCapacity,
-        int eveningCapacity)
-    {
-        var activeBookings = bookings.Where(booking => booking.Status != "Cancelled").ToList();
-        if (activeBookings.Any(booking => booking.Session.Equals("FullDay", StringComparison.OrdinalIgnoreCase)))
-            return true;
-        if (session.Equals("FullDay", StringComparison.OrdinalIgnoreCase))
-            return activeBookings.Count > 0;
-
-        var capacity = session.Equals("Morning", StringComparison.OrdinalIgnoreCase)
-            ? morningCapacity
-            : eveningCapacity;
-
-        for (var date = fromDate; date <= toDate; date = date.AddDays(1))
-        {
-            var bookingsForSession = activeBookings.Count(booking =>
-                booking.Session.Equals(session, StringComparison.OrdinalIgnoreCase)
-                && booking.FromDate <= date
-                && booking.ToDate >= date);
-            if (bookingsForSession >= capacity) return true;
-        }
-        return false;
-    }
 }
 
 public class UserRepository : IUserRepository
@@ -217,7 +188,8 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetAdminByMobileAsync(string mobile) =>
         await _db.Users.Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Mobile == mobile && (u.Role.Name == "Admin" || u.Role.Name == "Staff"));
+            .FirstOrDefaultAsync(u => u.Mobile == mobile
+                && (u.Role.Name == "Admin" || u.Role.Name == "Staff" || u.Role.Name == "Clerk"));
 
     public async Task<User?> GetByIdAsync(int id) =>
         await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);

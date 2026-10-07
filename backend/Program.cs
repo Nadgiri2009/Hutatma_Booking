@@ -79,6 +79,8 @@ builder.Services.AddAuthorization(opt =>
 {
     opt.AddPolicy("AdminOnly",  p => p.RequireRole("Admin"));
     opt.AddPolicy("StaffPlus",  p => p.RequireRole("Admin", "Staff"));
+    opt.AddPolicy("RefundReviewers", p => p.RequireRole("Admin", "Clerk"));
+    opt.AddPolicy("ClerkOnly", p => p.RequireRole("Clerk"));
 });
 
 // Make HttpContext available to services that need it (e.g. AuditService)

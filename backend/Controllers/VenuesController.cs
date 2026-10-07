@@ -1,6 +1,7 @@
 using HutatmaBooking.API.Data;
 using HutatmaBooking.API.DTOs;
 using HutatmaBooking.API.Services.Interfaces;
+using HutatmaBooking.API.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -193,6 +194,7 @@ public class VenuesController : ControllerBase
                 Description = v.Description,
                 Capacity = v.Capacity,
                 MorningBookingCapacity = v.MorningBookingCapacity,
+                AfternoonBookingCapacity = v.AfternoonBookingCapacity,
                 EveningBookingCapacity = v.EveningBookingCapacity,
                 Location = v.Location,
                 Status = v.Status,
@@ -258,8 +260,8 @@ public class VenuesController : ControllerBase
     public async Task<IActionResult> UpdateBookingCapacity(int id, [FromBody] VenueBookingCapacityUpdateDto dto)
     {
         var session = dto.Session?.Trim();
-        if (session is not ("Morning" or "Evening"))
-            return BadRequest(new { error = "Only Morning and Evening capacities can be changed. Full Day remains exclusive under the existing booking rules." });
+        if (session is not ("Morning" or "Afternoon" or "Evening"))
+            return BadRequest(new { error = "Only Morning, Afternoon, and Evening capacities can be changed. Full Day remains exclusive." });
         if (dto.Capacity < 1)
             return BadRequest(new { error = "Booking capacity must be at least one." });
 
@@ -270,22 +272,38 @@ public class VenuesController : ControllerBase
         var activeBookings = await _db.Bookings.AsNoTracking()
             .Where(booking => booking.VenueId == id
                 && booking.Status != "Cancelled"
-                && (booking.Session == session || booking.Session == "FullDay")
+                && booking.Status != "ForceCancelled"
                 && booking.ToDate >= today)
-            .Select(booking => new { booking.FromDate, booking.ToDate })
+            .Select(booking => new { booking.FromDate, booking.ToDate, booking.Session })
             .ToListAsync();
         var maximumBookedOnDate = activeBookings
+            .Where(booking =>
+                BookingSlots.TryParse(booking.Session, out var sessions)
+                && sessions.Contains(session, StringComparer.OrdinalIgnoreCase))
             .Select(booking => booking.FromDate < today ? today : booking.FromDate)
             .Distinct()
-            .Select(date => activeBookings.Count(booking => booking.FromDate <= date && booking.ToDate >= date))
+            .Select(date => activeBookings.Count(booking =>
+                booking.FromDate <= date
+                && booking.ToDate >= date
+                && BookingSlots.TryParse(booking.Session, out var sessions)
+                && sessions.Contains(session, StringComparer.OrdinalIgnoreCase)))
             .DefaultIfEmpty(0)
             .Max();
         if (dto.Capacity < maximumBookedOnDate)
             return Conflict(new { error = $"Capacity cannot be less than the number of existing bookings ({maximumBookedOnDate})." });
 
-        var oldCapacity = session == "Morning" ? venue.MorningBookingCapacity : venue.EveningBookingCapacity;
-        if (session == "Morning") venue.MorningBookingCapacity = dto.Capacity;
-        else venue.EveningBookingCapacity = dto.Capacity;
+        var oldCapacity = session switch
+        {
+            "Morning" => venue.MorningBookingCapacity,
+            "Afternoon" => venue.AfternoonBookingCapacity,
+            _ => venue.EveningBookingCapacity,
+        };
+        switch (session)
+        {
+            case "Morning": venue.MorningBookingCapacity = dto.Capacity; break;
+            case "Afternoon": venue.AfternoonBookingCapacity = dto.Capacity; break;
+            default: venue.EveningBookingCapacity = dto.Capacity; break;
+        }
         await _db.SaveChangesAsync();
         await _audit.LogAsync(
             "BookingCapacityUpdated",
@@ -458,6 +476,7 @@ public class VenueListDto
 public class VenueDetailsDto : VenueListDto
 {
     public int MorningBookingCapacity { get; set; } = 30;
+    public int AfternoonBookingCapacity { get; set; } = 30;
     public int EveningBookingCapacity { get; set; } = 30;
     public new List<VenueFacilityDto> Facilities { get; set; } = new();
     public List<VenueImageDto> Images { get; set; } = new();

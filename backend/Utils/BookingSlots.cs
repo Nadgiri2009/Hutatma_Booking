@@ -58,22 +58,33 @@ public static class BookingSlots
         _ => 0,
     };
 
+    public static bool IsActiveBooking(Booking booking) =>
+        !booking.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
+        && !booking.Status.Equals("ForceCancelled", StringComparison.OrdinalIgnoreCase)
+        && !booking.Status.Equals("Force Cancelled", StringComparison.OrdinalIgnoreCase);
+
     public static bool HasCapacityConflict(
         IEnumerable<Booking> bookings,
         DateOnly fromDate,
         DateOnly toDate,
         string session,
-        VenueMaster venue)
+        VenueMaster venue,
+        int? excludedBookingId = null)
     {
         if (!TryParse(session, out var requestedSessions)) return true;
 
-        var activeBookings = bookings.Where(booking => booking.Status != "Cancelled").ToList();
+        var activeBookings = bookings
+            .Where(booking => IsActiveBooking(booking) && booking.Id != excludedBookingId)
+            .ToList();
         if (requestedSessions.Count == OrderedSessions.Length
             && activeBookings.Any(booking => booking.FromDate <= toDate && booking.ToDate >= fromDate))
             return true;
 
-        if (activeBookings.Any(booking => CountPerDay(booking.Session) == OrderedSessions.Length
-            && booking.FromDate <= toDate && booking.ToDate >= fromDate))
+        if (activeBookings.Any(booking =>
+                TryParse(booking.Session, out var bookedSessions)
+                && bookedSessions.Count == OrderedSessions.Length
+                && booking.FromDate <= toDate
+                && booking.ToDate >= fromDate))
             return true;
 
         for (var date = fromDate; date <= toDate; date = date.AddDays(1))
@@ -88,7 +99,7 @@ public static class BookingSlots
                     && booking.ToDate >= date
                     && TryParse(booking.Session, out var bookedSessions)
                     && bookedSessions.Contains(requestedSession, StringComparer.OrdinalIgnoreCase));
-                if (bookingsForSlot >= capacity) return true;
+                if (bookingsForSlot > 0) return true;
             }
         }
 

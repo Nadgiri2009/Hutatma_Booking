@@ -35,6 +35,7 @@ public class VenueMaster
     public string? Description { get; set; }
     public int? Capacity { get; set; }
     public int MorningBookingCapacity { get; set; } = 30;
+    public int AfternoonBookingCapacity { get; set; } = 30;
     public int EveningBookingCapacity { get; set; } = 30;
     [MaxLength(200)] public string? Location { get; set; }
     [MaxLength(30)] public string Status { get; set; } = "Active";
