@@ -360,9 +360,13 @@ public class BookingService : IBookingService
         ReceiptNumber   = b.Receipts.OrderByDescending(r => r.GeneratedAt).FirstOrDefault()?.ReceiptNumber ?? string.Empty,
         ApplicantName   = b.Applicant?.FullName ?? "",
         ApplicantMobile = b.Applicant?.Mobile ?? "",
+        ApplicantAlternateMobile = b.Applicant?.AlternateMobile,
         ApplicantEmail  = b.Applicant?.Email ?? "",
         ApplicantAddress = b.Applicant?.Address ?? "",
         FunctionName    = b.Applicant?.FunctionName ?? "",
+        FunctionType    = b.Applicant?.FunctionType ?? "",
+        ExpectedGuests  = b.Applicant?.ExpectedGuests ?? 0,
+        IDProofType     = b.Applicant?.IDProofType ?? "",
         BankDetail = b.BankDetail == null ? null : new BankDetailDto
         {
             BankName = b.BankDetail.BankName,

@@ -166,9 +166,13 @@ public class BookingResponseDto
     public string   ReceiptNumber   { get; set; } = "";
     public string   ApplicantName   { get; set; } = "";
     public string   ApplicantMobile { get; set; } = "";
+    public string?  ApplicantAlternateMobile { get; set; }
     public string   ApplicantEmail  { get; set; } = "";
     public string   ApplicantAddress { get; set; } = "";
     public string   FunctionName    { get; set; } = "";
+    public string   FunctionType    { get; set; } = "";
+    public int      ExpectedGuests  { get; set; }
+    public string   IDProofType     { get; set; } = "";
     public BankDetailDto? BankDetail { get; set; }
     public string?  PaymentTransactionRef { get; set; }
     public string?  PaymentMethod   { get; set; }

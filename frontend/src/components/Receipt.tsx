@@ -31,7 +31,7 @@ const fmtDate = (d?: string | null) =>
 const sessionLabel = (s?: string) => (s === 'FullDay' ? 'Full Day' : (s || '—'));
 
 const Row: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.6, borderBottom: '1px dashed #e2e8f0' }}>
+  <Box className="receipt-row" sx={{ display: 'flex', justifyContent: 'space-between', py: 0.6, borderBottom: '1px dashed #e2e8f0' }}>
     <Typography variant="body2" color="text.secondary">{label}</Typography>
     <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'right' }}>{value}</Typography>
   </Box>
@@ -48,17 +48,97 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
     <>
     <GlobalStyles styles={{
       '@media print': {
+        '@page': { size: 'A4 portrait', margin: '8mm' },
+        'html, body': {
+          margin: '0 !important',
+          padding: '0 !important',
+          printColorAdjust: 'exact',
+          WebkitPrintColorAdjust: 'exact',
+        },
         'body *': { visibility: 'hidden' },
         '#receipt-printable, #receipt-printable *': { visibility: 'visible' },
         '#receipt-printable': {
           position: 'absolute',
           top: 0,
           left: 0,
-          width: '100%',
-          maxWidth: '100%',
+          width: '194mm',
+          maxWidth: '194mm',
           margin: 0,
           boxShadow: 'none',
           border: 0,
+          borderRadius: 0,
+          overflow: 'visible',
+          fontSize: '9pt',
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
+        },
+        '#receipt-printable .receipt-letterhead': {
+          padding: '5mm 7mm',
+          gap: '2mm',
+        },
+        '#receipt-printable .receipt-content': {
+          padding: '5mm 7mm',
+        },
+        '#receipt-printable .receipt-booking-strip': {
+          marginBottom: '3mm',
+          gap: '2mm',
+        },
+        '#receipt-printable .receipt-section': {
+          marginBottom: '3mm',
+          padding: '2.5mm 3mm',
+          border: '0.25mm solid #dce3ed',
+          borderRadius: '1mm',
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
+        },
+        '#receipt-printable .receipt-section-grid': {
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          columnGap: '6mm',
+          rowGap: '1mm',
+          margin: 0,
+        },
+        '#receipt-printable .receipt-row': {
+          paddingTop: '1mm',
+          paddingBottom: '1mm',
+          minHeight: '5mm',
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
+        },
+        '#receipt-printable .receipt-section-grid .MuiTypography-root': {
+          fontSize: '9pt',
+          lineHeight: 1.3,
+        },
+        '#receipt-printable .receipt-section-title': {
+          fontSize: '10pt',
+          marginTop: 0,
+          marginBottom: '2mm',
+        },
+        '#receipt-printable .receipt-charges-title': {
+          marginTop: '3mm',
+        },
+        '#receipt-printable .receipt-amount-paid': {
+          marginTop: '3mm',
+          padding: '2.5mm 3mm',
+        },
+        '#receipt-printable .receipt-amount-paid .MuiTypography-root': {
+          fontSize: '10pt',
+        },
+        '#receipt-printable .receipt-divider': {
+          marginTop: '2mm',
+          marginBottom: '2mm',
+        },
+        '#receipt-printable .receipt-footer': {
+          marginTop: '1mm',
+          rowGap: '2mm',
+        },
+        '#receipt-printable .receipt-footer .MuiTypography-root': {
+          fontSize: '8pt',
+          lineHeight: 1.35,
+        },
+        '#receipt-printable .receipt-signatory': {
+          paddingTop: '1mm',
+          minWidth: '35mm',
         },
       },
     }} />
@@ -74,7 +154,7 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
       }}
     >
       {/* Letterhead */}
-      <Box sx={{
+      <Box className="receipt-letterhead" sx={{
         background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', color: '#fff', px: 4, py: 3,
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2,
       }}>
@@ -98,11 +178,11 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
         </Box>
       </Box>
 
-      <Box sx={{ px: 4, py: 3 }}>
+      <Box className="receipt-content" sx={{ px: 4, py: 3 }}>
         {/* Booking number + status strip */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Box className="receipt-booking-strip" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="body1" fontWeight={700} color="primary.main">
-            Receipt No: {b.bookingNumber}
+            Booking ID: {b.bookingNumber}
           </Typography>
           <Chip
             label={b.status === 'Confirmed' ? 'Confirmed & Paid' : b.status}
@@ -113,90 +193,108 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
         </Box>
         <Divider sx={{ mb: 2 }} />
 
-        <Grid container spacing={4}>
-          {/* Customer Details */}
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom>
-              Customer Details
-            </Typography>
-            <Row label="Name"    value={b.applicantName} />
-            <Row label="Mobile"  value={b.applicantMobile} />
-            <Row label="Email"   value={b.applicantEmail || '—'} />
+        <Box className="receipt-section">
+          <Typography className="receipt-section-title" variant="subtitle2" fontWeight={700} color="primary.main">
+            1. Applicant / Customer Details
+          </Typography>
+          <Box className="receipt-section-grid" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+            <Row label="Name" value={b.applicantName} />
+            <Row label="Mobile" value={b.applicantMobile} />
+            {b.applicantAlternateMobile && <Row label="Alternate Mobile" value={b.applicantAlternateMobile} />}
+            <Row label="Email" value={b.applicantEmail || '—'} />
             <Row label="Address" value={b.applicantAddress || '—'} />
-          </Grid>
-
-          {/* Venue / Booking Details */}
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom>
-              Venue &amp; Booking Details
-            </Typography>
-            <Row label="Venue"       value={b.venueName} />
-            <Row label="Purpose"     value={b.priceItemName} />
-            {b.functionName && <Row label="Function" value={b.functionName} />}
-            <Row label="From Date"   value={fmtDate(b.fromDate)} />
-            <Row label="To Date"     value={fmtDate(b.toDate)} />
-            <Row label="Session"     value={sessionLabel(b.session)} />
-            <Row label="Total Days"  value={`${b.totalDays} day(s)`} />
-          </Grid>
-
-          {/* Payment Details */}
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom sx={{ mt: 1 }}>
-              Payment Details
-            </Typography>
-            <Row label="Payment Method"      value={payMethod} />
-            <Row label="Transaction Ref."     value={txnRef || '—'} />
-            <Row label="Payment Date"         value={fmtDate(payDate)} />
-            <Row label="Payment Status"       value={payStatus} />
-          </Grid>
-
-          {b.bankDetail && (
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom sx={{ mt: 1 }}>
-                Bank Account Details for Refund
-              </Typography>
-              <Grid container columnSpacing={4} rowSpacing={0.5}>
-                <Grid item xs={12} sm={6}><Row label="Account Holder" value={b.bankDetail.accountHolderName} /></Grid>
-                <Grid item xs={12} sm={6}><Row label="Bank Name" value={b.bankDetail.bankName} /></Grid>
-                <Grid item xs={12} sm={6}><Row label="Account Number" value={b.bankDetail.accountNumber} /></Grid>
-                <Grid item xs={12} sm={6}><Row label="IFSC Code" value={b.bankDetail.ifscCode} /></Grid>
-                <Grid item xs={12} sm={6}><Row label="Branch" value={b.bankDetail.branchName} /></Grid>
-                {b.bankDetail.micrCode && <Grid item xs={12} sm={6}><Row label="MICR Code" value={b.bankDetail.micrCode} /></Grid>}
-              </Grid>
-            </Grid>
-          )}
-
-          {/* Charges Breakdown */}
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom sx={{ mt: 1 }}>
-              Charges
-            </Typography>
-            <Row label="Base Rent"          value={fmtCurrency(b.baseRent)} />
-            <Row label="Holiday Charges"     value={fmtCurrency(b.holidayCharge)} />
-            <Row label="Equipment Charges"   value={fmtCurrency(b.equipmentCharge)} />
-            <Row label="Security Deposit"    value={fmtCurrency(b.securityDeposit)} />
-            <Row label="CGST"                value={fmtCurrency(b.cgstAmount)} />
-            <Row label="SGST"                value={fmtCurrency(b.sgstAmount)} />
-          </Grid>
-        </Grid>
-
-        {/* Grand total */}
-        <Box sx={{
-          mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)', borderRadius: 1, px: 3, py: 1.5,
-        }}>
-          <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 700 }}>
-            Amount Paid
-          </Typography>
-          <Typography variant="h6" sx={{ color: '#f0c7df', fontWeight: 800 }}>
-            {fmtCurrency(amountPaid)}
-          </Typography>
+            {b.expectedGuests > 0 && <Row label="Expected Guests" value={b.expectedGuests} />}
+            {b.idProofType && <Row label="ID Proof Type" value={b.idProofType} />}
+          </Box>
         </Box>
 
-        <Divider sx={{ my: 3 }} />
+        <Box className="receipt-section">
+          <Typography className="receipt-section-title" variant="subtitle2" fontWeight={700} color="primary.main">
+            2. Venue &amp; Booking Details
+          </Typography>
+          <Box className="receipt-section-grid" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+            <Box>
+              <Row label="Venue" value={b.venueName} />
+              <Row label="Purpose" value={b.priceItemName} />
+              {b.functionName && <Row label="Function" value={b.functionName} />}
+              {b.functionType && <Row label="Function Type" value={b.functionType} />}
+              <Row label="From Date" value={fmtDate(b.fromDate)} />
+              <Row label="To Date" value={fmtDate(b.toDate)} />
+              <Row label="Session" value={sessionLabel(b.session)} />
+              <Row label="Total Days" value={`${b.totalDays} day(s)`} />
+            </Box>
+            <Box>
+              <Typography className="receipt-section-title" variant="subtitle2" fontWeight={700} color="primary.main">
+                Charges
+              </Typography>
+              <Row label="Base Rent" value={fmtCurrency(b.baseRent)} />
+              <Row label="Holiday Charges" value={fmtCurrency(b.holidayCharge)} />
+              <Row label="Equipment Charges" value={fmtCurrency(b.equipmentCharge)} />
+              {b.equipmentItems?.map((item: any) => (
+                <Row
+                  key={item.equipmentId || item.equipmentName}
+                  label={`${item.equipmentName} (${item.quantity} ${item.chargeUnit || 'unit(s)'})`}
+                  value={fmtCurrency(item.totalPrice)}
+                />
+              ))}
+              <Row label="Security Deposit" value={fmtCurrency(b.securityDeposit)} />
+              <Row label="CGST" value={fmtCurrency(b.cgstAmount)} />
+              <Row label="SGST" value={fmtCurrency(b.sgstAmount)} />
+              <Box className="receipt-amount-paid" sx={{
+                mt: 2,
+                px: 1.5,
+                py: 1,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderRadius: 1,
+                background: 'linear-gradient(110deg, #b45490 0%, #48145e 100%)',
+              }}>
+                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 700 }}>Amount Paid</Typography>
+                <Typography variant="subtitle1" sx={{ color: '#f0c7df', fontWeight: 800 }}>{fmtCurrency(amountPaid)}</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box className="receipt-section">
+          <Typography className="receipt-section-title" variant="subtitle2" fontWeight={700} color="primary.main">
+            3. Payment &amp; Bank Details
+          </Typography>
+          <Box className="receipt-section-grid" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+            <Box>
+              <Typography className="receipt-section-title" variant="subtitle2" fontWeight={700} color="primary.main">
+                Payment Details
+              </Typography>
+              <Row label="Payment Method" value={payMethod} />
+              <Row label="Transaction Ref." value={txnRef || '—'} />
+              <Row label="Payment Date" value={fmtDate(payDate)} />
+              <Row label="Payment Status" value={payStatus} />
+            </Box>
+            <Box>
+              <Typography className="receipt-section-title" variant="subtitle2" fontWeight={700} color="primary.main">
+                Bank Account Details for Refund
+              </Typography>
+              {b.bankDetail ? (
+                <>
+                  <Row label="Account Holder" value={b.bankDetail.accountHolderName} />
+                  <Row label="Bank Name" value={b.bankDetail.bankName} />
+                  <Row label="Account Number" value={b.bankDetail.accountNumber} />
+                  <Row label="IFSC Code" value={b.bankDetail.ifscCode} />
+                  <Row label="Branch" value={b.bankDetail.branchName} />
+                  {b.bankDetail.micrCode && <Row label="MICR Code" value={b.bankDetail.micrCode} />}
+                </>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Bank account details not provided.</Typography>
+              )}
+            </Box>
+          </Box>
+        </Box>
+
+        <Divider className="receipt-divider" sx={{ my: 3 }} />
 
         {/* Footer / signature */}
-        <Grid container spacing={2} sx={{ mt: 1 }}>
+        <Grid container spacing={2} className="receipt-footer" sx={{ mt: 1 }}>
           <Grid item xs={12} md={7}>
             <Typography variant="caption" color="text.secondary">
               This is a system-generated receipt and is valid proof of payment for the booking referenced above.
@@ -204,7 +302,7 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
             </Typography>
           </Grid>
           <Grid item xs={12} md={5} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-            <Box sx={{ display: 'inline-block', borderTop: '1px solid #cbd5e1', pt: 1, minWidth: 180 }}>
+            <Box className="receipt-signatory" sx={{ display: 'inline-block', borderTop: '1px solid #cbd5e1', pt: 1, minWidth: 180 }}>
               <Typography variant="caption" color="text.secondary">Authorized Signatory</Typography>
             </Box>
           </Grid>

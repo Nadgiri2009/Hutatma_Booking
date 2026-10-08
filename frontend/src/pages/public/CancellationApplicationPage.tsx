@@ -57,7 +57,7 @@ const CancellationApplicationPage: React.FC = () => {
 
   const searchBooking = async () => {
     if (!search.trim()) {
-      setError('Enter an application number, booking ID, or registered mobile number.');
+      setError('Enter an Booking ID, booking ID, or registered mobile number.');
       return;
     }
     setLoading(true);
@@ -170,7 +170,7 @@ const CancellationApplicationPage: React.FC = () => {
             <TextField
               fullWidth
               size="small"
-              label="Application Number, Booking ID, or Registered Mobile Number"
+              label="Booking ID, Booking ID, or Registered Mobile Number"
               placeholder="e.g. HSM-2026-00001 or 9876543210"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -191,7 +191,7 @@ const CancellationApplicationPage: React.FC = () => {
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {searched && !loading && !bookings.length && !error && (
-          <Alert severity="info" sx={{ mb: 2 }}>No booking was found. Check the application number, booking ID, or registered mobile number.</Alert>
+          <Alert severity="info" sx={{ mb: 2 }}>No booking was found. Check the Booking ID, booking ID, or registered mobile number.</Alert>
         )}
         {cancellationIneligible.length > 0 && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -321,7 +321,7 @@ const CancellationApplicationPage: React.FC = () => {
           <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 1.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
               <Box>
-                <Typography variant="overline" color="text.secondary">Application Number</Typography>
+                <Typography variant="overline" color="text.secondary">Booking ID</Typography>
                 <Typography variant="h6" fontWeight={800} color="primary.main">{selectedBooking.applicationNumber}</Typography>
               </Box>
               <Chip label={selectedBooking.bookingStatus} color={selectedBooking.bookingStatus === 'Cancelled' ? 'default' : 'success'} />

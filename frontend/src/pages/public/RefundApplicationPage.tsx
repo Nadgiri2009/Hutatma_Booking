@@ -92,7 +92,7 @@ const RefundApplicationPage: React.FC = () => {
 
   const handleSearch = async () => {
     if (!search.trim()) {
-      setError('Enter an application number or registered mobile number.');
+      setError('Enter an Booking ID or registered mobile number.');
       return;
     }
     setLoading(true);
@@ -197,7 +197,7 @@ const RefundApplicationPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <TextField
               fullWidth
-              label="Application Number or Registered Mobile Number"
+              label="Booking ID or Registered Mobile Number"
               placeholder="e.g. HSM-2026-00001 or 9876543210"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -219,7 +219,7 @@ const RefundApplicationPage: React.FC = () => {
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {searched && !loading && !results.length && !error && (
-          <Alert severity="info" sx={{ mb: 2 }}>No application was found. Check the application number or registered mobile number.</Alert>
+          <Alert severity="info" sx={{ mb: 2 }}>No application was found. Check the Booking ID or registered mobile number.</Alert>
         )}
         {refundIneligible.length > 0 && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -399,7 +399,7 @@ const RefundApplicationPage: React.FC = () => {
           <Paper variant="outlined" sx={{ borderRadius: 1.5, overflow: 'hidden' }}>
             <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#eef3f8', display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
               <Box>
-                <Typography variant="overline" color="text.secondary">Application Number</Typography>
+                <Typography variant="overline" color="text.secondary">Booking ID</Typography>
                 <Typography variant="h6" fontWeight={800} color="primary.main">{selected.applicationNumber}</Typography>
               </Box>
               <Chip label={selected.refundRequest?.status || selected.bookingStatus} color={selected.refundRequest ? 'info' : selected.bookingStatus === 'Confirmed' ? 'success' : 'default'} />

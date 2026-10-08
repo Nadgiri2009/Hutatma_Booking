@@ -264,7 +264,7 @@ const AdminRefundRequestsPage: React.FC = () => {
             <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>REFUND REQUEST</Typography>
           </Box>
           <Grid container spacing={1.5}>
-            <Grid item xs={6}><Info label="Application Number" value={printItem.applicationNumber} /></Grid>
+            <Grid item xs={6}><Info label="Booking ID" value={printItem.applicationNumber} /></Grid>
             <Grid item xs={6}><Info label="Refund Request Number" value={printItem.refundRequestNumber} /></Grid>
             <Grid item xs={6}><Info label="Applicant Name" value={printItem.applicantName} /></Grid>
             <Grid item xs={6}><Info label="Contact Number" value={printItem.contactNumber} /></Grid>
@@ -296,7 +296,7 @@ const AdminRefundRequestsPage: React.FC = () => {
           <DialogContent dividers>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}><Info label="Refund Request Number / Status" value={`${selected.refundRequestNumber} · ${selected.status}`} /></Grid>
-              <Grid item xs={12} sm={6}><Info label="Application Number" value={selected.applicationNumber} /></Grid>
+              <Grid item xs={12} sm={6}><Info label="Booking ID" value={selected.applicationNumber} /></Grid>
               <Grid item xs={12} sm={6}><Info label="Applicant / Contact" value={`${selected.applicantName} · ${selected.contactNumber}`} /></Grid>
               <Grid item xs={12} sm={6}><Info label="Email / Alternate Contact" value={`${selected.applicantEmail || '—'}${selected.applicantAlternateMobile ? ` · ${selected.applicantAlternateMobile}` : ''}`} /></Grid>
               <Grid item xs={12} sm={6}><Info label="Address" value={selected.applicantAddress} /></Grid>

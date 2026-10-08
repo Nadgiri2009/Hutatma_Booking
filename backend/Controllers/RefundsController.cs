@@ -43,7 +43,7 @@ public class RefundsController : ControllerBase
         bookingNumber = bookingNumber?.Trim();
         mobile = mobile?.Trim();
         if (string.IsNullOrWhiteSpace(bookingNumber) == string.IsNullOrWhiteSpace(mobile))
-            return BadRequest(new { error = "Provide an application number or mobile number." });
+            return BadRequest(new { error = "Provide an Booking ID or mobile number." });
 
         var query = _db.Bookings
             .AsNoTracking()
@@ -58,7 +58,7 @@ public class RefundsController : ControllerBase
             : await query.Where(b => b.Applicant != null && b.Applicant.Mobile == mobile)
                 .OrderByDescending(b => b.CreatedAt).ToListAsync();
 
-        if (bookings.Count == 0) return NotFound(new { error = "No booking was found for that application number or mobile number." });
+        if (bookings.Count == 0) return NotFound(new { error = "No booking was found for that Booking ID or mobile number." });
 
         var bookingIds = bookings.Select(b => b.Id).ToList();
         var refundRequests = await _db.RefundRequests.AsNoTracking()
@@ -87,7 +87,7 @@ public class RefundsController : ControllerBase
         var suppliedValues = new[] { refundRequestNumber, bookingNumber, mobile }
             .Count(value => !string.IsNullOrWhiteSpace(value));
         if (suppliedValues != 1)
-            return BadRequest(new { error = "Search using one refund request number, application number, or mobile number." });
+            return BadRequest(new { error = "Search using one refund request number, Booking ID, or mobile number." });
 
         var query = _db.RefundRequests.AsNoTracking()
             .Include(r => r.Booking).ThenInclude(b => b.Applicant)
@@ -108,7 +108,7 @@ public class RefundsController : ControllerBase
                 ? "No refund request was found for this mobile number."
                 : !string.IsNullOrWhiteSpace(refundRequestNumber)
                     ? "No refund request was found with that request number."
-                    : "No refund request was found for this application number.";
+                    : "No refund request was found for this Booking ID.";
             return NotFound(new { error = message });
         }
 

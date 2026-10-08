@@ -51,7 +51,7 @@ const TrackRefundPage: React.FC = () => {
 
   const track = async () => {
     if (!search.trim()) {
-      setError('Enter a refund request number, application number, or registered mobile number.');
+      setError('Enter a refund request number, Booking ID, or registered mobile number.');
       return;
     }
     setLoading(true);
@@ -90,16 +90,16 @@ const TrackRefundPage: React.FC = () => {
             value={searchType}
             onChange={(_, value: SearchType | null) => value && setSearchType(value)}
             sx={{ mb: 2, display: 'flex', flexWrap: 'wrap' }}
-            aria-label="Track by refund request number, application number, or mobile number"
+            aria-label="Track by refund request number, Booking ID, or mobile number"
           >
             <ToggleButton value="refund">Refund Request Number</ToggleButton>
-            <ToggleButton value="booking">Application Number or Mobile Number</ToggleButton>
+            <ToggleButton value="booking">Booking ID or Mobile Number</ToggleButton>
           </ToggleButtonGroup>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <TextField
               fullWidth
               size="small"
-              label={searchType === 'refund' ? 'Refund Request Number' : 'Application Number or Registered Mobile Number'}
+              label={searchType === 'refund' ? 'Refund Request Number' : 'Booking ID or Registered Mobile Number'}
               placeholder={searchType === 'refund' ? 'Enter refund request number' : 'e.g. HSM-2026-00001 or 9876543210'}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -131,7 +131,7 @@ const TrackRefundPage: React.FC = () => {
               </Box>
               <Box sx={{ p: { xs: 2, sm: 3 } }}>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Application Number</Typography><Typography variant="body2" fontWeight={600}>{refund.applicationNumber}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Booking ID</Typography><Typography variant="body2" fontWeight={600}>{refund.applicationNumber}</Typography></Grid>
                   <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Applicant</Typography><Typography variant="body2" fontWeight={600}>{refund.applicantName}</Typography></Grid>
                   <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Mobile Number</Typography><Typography variant="body2" fontWeight={600}>{refund.mobile || '—'}</Typography></Grid>
                   <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Venue / Booking Date</Typography><Typography variant="body2" fontWeight={600}>{refund.venue} · {bookingDate(refund)}</Typography></Grid>
