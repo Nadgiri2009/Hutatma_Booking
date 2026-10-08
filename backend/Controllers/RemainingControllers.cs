@@ -401,7 +401,14 @@ public class CancellationsController : ControllerBase
 public class ReceiptsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public ReceiptsController(AppDbContext db) => _db = db;
+    private readonly IReceiptService _receipts;
+    private readonly INotificationService _notifications;
+    public ReceiptsController(AppDbContext db, IReceiptService receipts, INotificationService notifications)
+    {
+        _db = db;
+        _receipts = receipts;
+        _notifications = notifications;
+    }
 
     [HttpGet("booking/{bookingId}")]
     public async Task<IActionResult> GetByBooking(int bookingId)
@@ -410,6 +417,55 @@ public class ReceiptsController : ControllerBase
             .Include(r => r.Payment)
             .FirstOrDefaultAsync(r => r.BookingId == bookingId);
         return receipt == null ? NotFound() : Ok(receipt);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("number/{bookingNumber}/pdf")]
+    public async Task<IActionResult> DownloadByBookingNumber(string bookingNumber)
+    {
+        var receipt = await _db.Receipts
+            .Include(item => item.Payment)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.Venue)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.VenuePricing)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.Applicant)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.EquipmentItems)
+            .FirstOrDefaultAsync(item =>
+                item.Booking.BookingNumber == bookingNumber &&
+                item.Payment.Status == "Paid");
+        if (receipt == null) return NotFound(new { error = "A paid receipt was not found for this booking." });
+
+        var pdf = _receipts.GenerateReceiptPdf(receipt.Booking, receipt.Payment, receipt.ReceiptNumber);
+        return File(pdf, "application/pdf", $"Receipt-{receipt.ReceiptNumber}.pdf");
+    }
+
+    [AllowAnonymous]
+    [HttpPost("number/{bookingNumber}/email")]
+    public async Task<IActionResult> ResendByBookingNumber(string bookingNumber)
+    {
+        var receipt = await _db.Receipts
+            .Include(item => item.Payment)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.Venue)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.VenuePricing)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.Applicant)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.EquipmentItems)
+            .FirstOrDefaultAsync(item =>
+                item.Booking.BookingNumber == bookingNumber &&
+                item.Payment.Status == "Paid");
+        if (receipt == null) return NotFound(new { error = "A paid receipt was not found for this booking." });
+        if (string.IsNullOrWhiteSpace(receipt.Booking.Applicant?.Email))
+            return Conflict(new { error = "No email address is registered for this booking." });
+
+        var pdf = _receipts.GenerateReceiptPdf(receipt.Booking, receipt.Payment, receipt.ReceiptNumber);
+        await _notifications.SendReceiptEmailAsync(receipt.Booking, receipt.Payment, receipt.ReceiptNumber, pdf);
+        return Ok(new { message = "Receipt sent to the email address registered for this booking." });
     }
 }
 

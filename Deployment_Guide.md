@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide deploys the React frontend and ASP.NET Core 8 API on Windows Server/IIS, backed by SQL Server. The public site uses `hsm.solapurcorporation.org` and `115.242.140.250`; IIS serves the frontend on the public bindings and reverse-proxies `/api/*` to an API site bound only to loopback.
+This guide deploys the ASP.NET Web Forms (`frontend`) frontend and ASP.NET Core 8 API on Windows Server/IIS, backed by SQL Server. The public site uses `hsm.solapurcorporation.org` and `115.242.140.250`; IIS serves the ASPX application on the public bindings and reverse-proxies `/api/*` to an API site bound only to loopback.
 
 ## 1. Prepare the Server
 
@@ -13,14 +13,14 @@ This guide deploys the React frontend and ASP.NET Core 8 API on Windows Server/I
 
    Confirm the returned IPv4 address is `115.242.140.250`. Ensure the server owns that public IP, or that the router/NAT forwards ports 80 and 443 to it.
 3. Install Windows Server updates and IIS with Static Content, the IIS URL Rewrite module, and Application Request Routing (ARR). Enable ARR's **Proxy** feature at the server level in IIS Manager.
-4. Install the .NET 8 Hosting Bundle on the IIS server, then restart IIS.
+4. Install the .NET Framework 4.8 Developer Pack/ASP.NET 4.8 IIS feature for Web Forms and the .NET 8 Hosting Bundle for the API; then restart IIS.
 5. Install SQL Server 2022 (or a supported managed SQL Server) and configure encrypted connectivity from the API server.
-6. Install Node.js 18 LTS on the build machine. Node.js is needed only to build the frontend.
+6. Install Visual Studio Build Tools with the .NET Framework 4.8 targeting pack on the build machine.
 7. Obtain a trusted TLS certificate for `hsm.solapurcorporation.org` and install it in the server's Local Computer certificate store.
 
 ### Public IIS bindings
 
-Create one frontend IIS site, with its physical path set to the deployed React `build` directory. Add these bindings to that site:
+Create one frontend IIS site with its physical path set to the deployed `frontend` application directory. Configure its application pool for **.NET CLR v4.0 / Integrated**. Add these bindings to that site:
 
 | Type | IP address | Port | Host name | Certificate |
 | --- | --- | ---: | --- | --- |
@@ -28,7 +28,7 @@ Create one frontend IIS site, with its physical path set to the deployed React `
 | HTTP | `115.242.140.250` | 80 | *(leave blank)* | None |
 | HTTPS | All Unassigned (or `115.242.140.250`) | 443 | `hsm.solapurcorporation.org` | Domain certificate; enable SNI if sharing the IP |
 
-The blank-host HTTP binding lets `http://115.242.140.250` reach the site; the included frontend `web.config` redirects HTTP requests, including IP requests, to `https://hsm.solapurcorporation.org`. Use the domain URL for normal public access. A regular domain certificate does **not** validate `https://115.242.140.250`; only add an HTTPS IP binding if the certificate includes that IP address in its subject alternative names.
+The blank-host HTTP binding lets `http://115.242.140.250` reach the site. Set the production `ApiBaseUrl` in `frontend\Web.config` to `/api`; its rewrite rule forwards requests to the API's loopback listener. Enable ARR proxy in IIS for that rule. Use the domain URL for normal public access. A regular domain certificate does **not** validate `https://115.242.140.250`; only add an HTTPS IP binding if the certificate includes that IP address in its subject alternative names.
 
 Open inbound TCP 80 and 443 in Windows Firewall and any upstream firewall/NAT. Do not expose the API's loopback port (5001) publicly.
 
@@ -114,20 +114,17 @@ dotnet publish .\backend\HutatmaBooking.API.csproj --configuration Release --out
 
 ## 6. Build and Publish the Frontend
 
-Build the frontend to use a relative API URL so both the domain and IP bindings work without a separate API DNS name. From the repository root:
+Build the ASP.NET Web Forms project from the repository root:
 
 ```powershell
-Push-Location .\frontend
-npm ci
-$env:REACT_APP_API_URL = '/api'
-npm run build
-Pop-Location
+dotnet build .\frontend\HutatmaBooking.WebForms.csproj --configuration Release
 ```
 
-1. Confirm that `frontend\build` is generated and that API requests use `/api` (not `localhost` or a hard-coded server address).
-2. Deploy the contents of `frontend\build` to the frontend IIS site's physical path. Its included `web.config` redirects domain HTTP to HTTPS, proxies `/api/*` to the loopback API site, and falls back to `index.html` for React routes.
-3. In IIS Manager, verify the domain and IP bindings. The API site must remain bound only to `127.0.0.1:5001`.
-4. Do not put API credentials or other secrets in React environment variables; build variables are public in the generated JavaScript.
+1. Set `ApiBaseUrl` in `frontend\Web.config` to `/api` for production. Its URL Rewrite rule forwards same-origin API requests to `http://127.0.0.1:5001`; ensure ARR proxy is enabled.
+2. Deploy the `frontend` application files and compiled `bin\HutatmaBooking.WebForms.dll` to the frontend IIS site's physical path.
+3. Configure the frontend app pool as **.NET CLR v4.0 / Integrated**. Keep the API site in a separate **No Managed Code** pool bound only to `127.0.0.1:5001`.
+4. Verify direct navigation and refresh for routes such as `/book`, `/cancel-booking`, and `/admin/login`, along with `/api/venues`.
+5. Never put API credentials in browser code or public app settings.
 
 ## 7. Configure Storage, Logs, and Backups
 
@@ -156,4 +153,4 @@ Pop-Location
 
 ## Local Wi-Fi Testing Is Not Production Hosting
 
-For temporary same-network phone testing only, bind the React dev server and API to `0.0.0.0`, configure `REACT_APP_API_URL` to the PC's Wi-Fi IP, and allow the selected ports on the PC's private-network firewall. Use the current Wi-Fi IP shown by `Get-NetIPAddress`; it can change. Do not expose the development server or HTTP test credentials to the public internet.
+For temporary same-network testing of the ASPX frontend, use IIS Express or local IIS and configure `ApiBaseUrl` to an API host reachable from the test device. Use the current Wi-Fi IP shown by `Get-NetIPAddress`; it can change. Do not expose test credentials to the public internet.

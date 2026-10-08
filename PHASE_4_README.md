@@ -1,5 +1,7 @@
 # PHASE 4: Dynamic PDF Data Import - Hutatma Smruti Mandir Venue Master Data
 
+> Historical implementation notes. The active frontend is now ASP.NET Web Forms in `frontend/`; the API and SQL Server data flow remain in `backend/`. See `README.md` and `Deployment_Guide.md` for current setup instructions.
+
 ## Overview
 
 This implementation converts static PDF venue/hall data into a dynamic, database-driven master data system. All 12 venue types from the Hutatma Smruti Mandir rate card have been structured into relational tables with proper relationships.

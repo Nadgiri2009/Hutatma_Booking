@@ -66,6 +66,7 @@ public class PaymentService : IPaymentService
     private readonly IBookingService      _bookingSvc;
     private readonly IAuditService       _audit;
     private readonly INotificationService _notifications;
+    private readonly IReceiptService _receipts;
     private readonly IConfiguration _config;
     private readonly AppDbContext        _db;
     private readonly IHttpClientFactory  _httpFactory;
@@ -76,6 +77,7 @@ public class PaymentService : IPaymentService
         IBookingService bookingSvc,
         IAuditService audit,
         INotificationService notifications,
+        IReceiptService receipts,
         IConfiguration config,
         AppDbContext db,
         IHttpClientFactory httpFactory)
@@ -85,6 +87,7 @@ public class PaymentService : IPaymentService
         _bookingSvc = bookingSvc;
         _audit    = audit;
         _notifications = notifications;
+        _receipts = receipts;
         _config = config;
         _db       = db;
         _httpFactory = httpFactory;
@@ -219,7 +222,8 @@ public class PaymentService : IPaymentService
         _db.Bookings.Update(booking);
         await _db.SaveChangesAsync();
 
-        await _notifications.SendBookingPaymentNotificationAsync(booking, payment, receipt.ReceiptNumber);
+        var receiptPdf = _receipts.GenerateReceiptPdf(booking, payment, receipt.ReceiptNumber);
+        await _notifications.SendBookingPaymentNotificationAsync(booking, payment, receipt.ReceiptNumber, receiptPdf);
         await _audit.LogAsync("GatewayPaymentCompleted", "Payments", payment.Id, "Pending", "Paid");
 
         return new PaymentDto
@@ -274,7 +278,8 @@ public class PaymentService : IPaymentService
         _db.Bookings.Update(booking);
         await _db.SaveChangesAsync();
 
-        await _notifications.SendBookingPaymentNotificationAsync(booking, payment, receipt.ReceiptNumber);
+        var receiptPdf = _receipts.GenerateReceiptPdf(booking, payment, receipt.ReceiptNumber);
+        await _notifications.SendBookingPaymentNotificationAsync(booking, payment, receipt.ReceiptNumber, receiptPdf);
         await _audit.LogAsync("VerifyPayment", "Payments", payment.Id, "Pending", "Paid");
 
         return new PaymentDto

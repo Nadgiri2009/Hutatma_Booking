@@ -12,6 +12,7 @@
     <Compile Remove="Services\Interfaces\IPhase5Phase6Services.cs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="QuestPDF" Version="2025.12.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer"       Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools"           Version="8.0.0" />

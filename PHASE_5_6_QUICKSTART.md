@@ -1,5 +1,7 @@
 # PHASE 5 & 6: Implementation Guide & Quick Start
 
+> Historical React-era implementation notes. The active frontend is now ASP.NET Web Forms in `frontend/`, so the `frontend/src` paths below no longer apply. See `README.md` and `Deployment_Guide.md` for current setup instructions.
+
 ## Quick Reference
 
 This guide provides step-by-step instructions to implement PHASE 5 (Dynamic Rate Management) and PHASE 6 (Booking Modification System).

@@ -56,11 +56,13 @@ public interface INoticeService
 public interface IReceiptService
 {
     Task<string> GenerateReceiptAsync(int bookingId);
+    byte[] GenerateReceiptPdf(Booking booking, Payment payment, string receiptNumber);
 }
 
 public interface INotificationService
 {
-    Task SendBookingPaymentNotificationAsync(Booking booking, Payment payment, string receiptNumber);
+    Task SendBookingPaymentNotificationAsync(Booking booking, Payment payment, string receiptNumber, byte[] receiptPdf);
+    Task SendReceiptEmailAsync(Booking booking, Payment payment, string receiptNumber, byte[] receiptPdf);
     Task SendOneTimeCodeAsync(string mobile, string otp, string purpose);
 }
 
