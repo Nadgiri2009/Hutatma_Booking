@@ -52,7 +52,7 @@ const AdminVenuesPage: React.FC = () => {
   const openVenueForm = () => {
     setEditing(null);
     setDialogMode('venue');
-    reset({ venueName: '', description: '', capacity: '', location: '', priceItemName: '', chargeUnit: 'Per 3-hour slot', amount: '', refundableDeposit: 0, holidaySurchargeAmount: 0, cgstPercent: 9, sgstPercent: 9 });
+    reset({ venueName: '', description: '', capacity: '', location: '', priceItemName: '', chargeUnit: 'Per slot', amount: '', refundableDeposit: 0, holidaySurchargeAmount: 0, cgstPercent: 9, sgstPercent: 9 });
     setOpen(true);
   };
 

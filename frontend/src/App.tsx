@@ -35,7 +35,7 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, role } = useSelector((s: RootState) => s.auth);
   const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
-  if (role === 'Clerk' && location.pathname !== '/admin/refunds') {
+  if (role === 'Clerk' && !location.pathname.startsWith('/admin/refunds')) {
     return <Navigate to="/admin/refunds" replace />;
   }
   return <>{children}</>;
@@ -55,7 +55,7 @@ const AppRoutes: React.FC = () => (
       <Route path="/book"          element={<BookingPage />} />
     </Route>
     <Route path="/admin/login" element={<AdminLoginPage />} />
-    <Route path="/clerk/login" element={<AdminLoginPage clerkMode />} />
+    <Route path="/clerk/login" element={<Navigate to="/admin/login" replace />} />
     <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
       <Route index               element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="dashboard"    element={<AdminDashboard />} />

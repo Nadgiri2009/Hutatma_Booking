@@ -10,7 +10,7 @@ import { authAPI } from '../../services/api';
 import { setCredentials } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
 
-const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }) => {
+const AdminLoginPage: React.FC = () => {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const [mobile, setMobile]     = useState('');
@@ -21,7 +21,7 @@ const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }
 
   const requestOtp = async () => {
     if (!/^\d{10}$/.test(mobile.trim())) {
-      setError('Enter the 10-digit admin mobile number.');
+      setError('Enter the 10-digit mobile number registered to your account.');
       return;
     }
     setLoading(true);
@@ -39,21 +39,13 @@ const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }
 
   const verifyOtp = async () => {
     if (!/^\d{6}$/.test(otp)) {
-      setError('Enter the six-digit code shown in the backend terminal.');
+      setError('Enter the six-digit verification code.');
       return;
     }
     setLoading(true);
     setError('');
     try {
       const res = await authAPI.verifyOtp(mobile.trim(), otp);
-      if (clerkMode && res.data.role !== 'Clerk') {
-        setError('This sign-in page is for Clerk accounts only.');
-        return;
-      }
-      if (!clerkMode && res.data.role === 'Clerk') {
-        setError('Clerk accounts must sign in through the Clerk login page.');
-        return;
-      }
       dispatch(setCredentials({
         token:    res.data.token,
         fullName: res.data.fullName,
@@ -110,7 +102,7 @@ const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }
             Hutatma Smruti Mandir
           </Typography>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 0.5 }}>
-            {clerkMode ? 'Clerk Refund Processing Panel' : 'Admin Control Panel'}
+            Admin & Clerk Portal
           </Typography>
         </Box>
 
@@ -121,7 +113,7 @@ const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }
           sx={{ p: 4 }}
         >
           <Typography variant="h6" fontWeight={700} color="primary.main" mb={3} textAlign="center">
-            {otpRequested ? 'Enter Verification Code' : clerkMode ? 'Clerk Sign In' : 'Sign In to Continue'}
+            {otpRequested ? 'Enter Verification Code' : 'Admin / Clerk Sign In'}
           </Typography>
 
           {error && (
@@ -131,7 +123,7 @@ const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }
           )}
 
           <TextField
-            label={clerkMode ? 'Clerk Mobile Number' : 'Admin / Staff Mobile Number'}
+            label="Registered Admin / Staff / Clerk Mobile Number"
             fullWidth
             type="tel"
             value={mobile}
@@ -151,7 +143,7 @@ const AdminLoginPage: React.FC<{ clerkMode?: boolean }> = ({ clerkMode = false }
           {otpRequested && (
             <>
               <Alert severity="info" sx={{ mb: 2 }}>
-                If this is an active {clerkMode ? 'Clerk' : 'Admin or Staff'} account, the one-time code is printed in the backend terminal.
+                Enter the one-time code delivered for this active account.
               </Alert>
               <TextField
                 label="Six-digit OTP"

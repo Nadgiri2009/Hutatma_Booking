@@ -70,7 +70,7 @@ const AdminLayout: React.FC = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/admin/login');
+    navigate('/');
   };
 
   const isActive = (path: string) => location.pathname === path;

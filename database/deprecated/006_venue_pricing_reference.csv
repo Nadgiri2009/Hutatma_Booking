@@ -1,21 +1,21 @@
 VenueId,VenueName,PriceItemName,ChargeUnit,Amount,RefundableDeposit,CGSTPercent,SGSTPercent,EffectiveFrom,EffectiveTo,Notes
-1,Hutatma Smruti Mandir - Classes & Gatherings,3-Hour Session,Session,30000,12000,9,9,2026-01-01,,Per 3 hours; Saturday/Sunday extra Rs.1400 + parking charges
+1,Hutatma Smruti Mandir - Classes & Gatherings,Session,Session,30000,12000,9,9,2026-01-01,,Saturday/Sunday extra Rs.1400 + parking charges
 1,Hutatma Smruti Mandir - Classes & Gatherings,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-2,Hutatma Smruti Mandir - Government Programs,3-Hour Session,Session,30000,12000,9,9,2026-01-01,,Per 3 hours; Saturday/Sunday extra Rs.1400
+2,Hutatma Smruti Mandir - Government Programs,Session,Session,30000,12000,9,9,2026-01-01,,Saturday/Sunday extra Rs.1400
 2,Hutatma Smruti Mandir - Government Programs,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-3,Hutatma Smruti Mandir - Ceremonies & Conferences,3-Hour Session,Session,30000,12000,9,9,2026-01-01,,Ceremony and conference hall
+3,Hutatma Smruti Mandir - Ceremonies & Conferences,Session,Session,30000,12000,9,9,2026-01-01,,Ceremony and conference hall
 3,Hutatma Smruti Mandir - Ceremonies & Conferences,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-4,Hutatma Smruti Mandir - Lecture Series,3-Hour Session,Session,7500,12000,9,9,2026-01-01,,Lecture/seminar hall rate
+4,Hutatma Smruti Mandir - Lecture Series,Session,Session,7500,12000,9,9,2026-01-01,,Lecture/seminar hall rate
 4,Hutatma Smruti Mandir - Lecture Series,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-5,Hutatma Smruti Mandir - Orchestra & Entertainment,3-Hour Session,Session,30000,12000,9,9,2026-01-01,,Orchestra and entertainment programs
+5,Hutatma Smruti Mandir - Orchestra & Entertainment,Session,Session,30000,12000,9,9,2026-01-01,,Orchestra and entertainment programs
 5,Hutatma Smruti Mandir - Orchestra & Entertainment,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-6,Hutatma Smruti Mandir - Dance Programs,3-Hour Session,Session,15000,12000,9,9,2026-01-01,,Lavni and dance programs
+6,Hutatma Smruti Mandir - Dance Programs,Session,Session,15000,12000,9,9,2026-01-01,,Lavni and dance programs
 6,Hutatma Smruti Mandir - Dance Programs,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-7,Hutatma Smruti Mandir - Drama & Magic,3-Hour Session,Session,2000,12000,9,9,2026-01-01,,Drama and magic performances
+7,Hutatma Smruti Mandir - Drama & Magic,Session,Session,2000,12000,9,9,2026-01-01,,Drama and magic performances
 7,Hutatma Smruti Mandir - Drama & Magic,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-8,Hutatma Smruti Mandir - Children Drama,3-Hour Session,Session,3000,12000,9,9,2026-01-01,,Balnata and Nakala programs
+8,Hutatma Smruti Mandir - Children Drama,Session,Session,3000,12000,9,9,2026-01-01,,Balnata and Nakala programs
 8,Hutatma Smruti Mandir - Children Drama,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
-9,Hutatma Smruti Mandir - Rehearsal Stage,3-Hour Session,Session,3000,12000,9,9,2026-01-01,,Rehearsal only stage
+9,Hutatma Smruti Mandir - Rehearsal Stage,Session,Session,3000,12000,9,9,2026-01-01,,Rehearsal only stage
 9,Hutatma Smruti Mandir - Rehearsal Stage,Extra Charges,Per Session,1400,0,9,9,2026-01-01,,Saturday/Sunday/Public Holiday additional charges
 10,Shubhrai Art Gallery,Daily Rate,Per Day,1000,0,9,9,2026-01-01,,Light bill as per actual usage (separate bill issued)
 11,Open Space (V.I.P Room Front),Daily Rate,Per Day,500,0,9,9,2026-01-01,,50x50 feet; Light bill as per actual usage

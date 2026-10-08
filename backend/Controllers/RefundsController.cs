@@ -354,10 +354,10 @@ public class RefundsController : ControllerBase
     {
         var request = await _db.RefundRequests.AsNoTracking()
             .Where(item => item.Id == id)
-            .Select(item => new { item.Id, item.BookingId, item.Booking.Status })
+            .Select(item => new { item.Id, item.BookingId, BookingStatus = item.Booking.Status })
             .FirstOrDefaultAsync();
         if (request == null) return NotFound();
-        var isForceCancelled = request.Status == "ForceCancelled" || request.Status == "Force Cancelled";
+        var isForceCancelled = request.BookingStatus is "ForceCancelled" or "Force Cancelled";
 
         var history = await _db.AuditLogs.AsNoTracking()
             .Where(item =>

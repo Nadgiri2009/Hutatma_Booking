@@ -79,7 +79,7 @@ Pricing details for each venue (already exists in the schema).
 
 ### 12 Venue Types from PDF
 
-| # | Venue Name | Capacity | Price (3hr) | Deposit | Type |
+| # | Venue Name | Capacity | Price per Session | Deposit | Type |
 |---|-----------|----------|------------|---------|------|
 | 1 | Classes & Gatherings | 800 | ₹30,000 | ₹12,000 | Hall |
 | 2 | Government Programs | 600 | ₹30,000 | ₹12,000 | Hall |
@@ -98,7 +98,7 @@ Each venue includes:
 - **Facilities**: Equipment, amenities, and capabilities (5-7 per venue)
 - **Images**: Sample gallery images from Unsplash (scaled to actual venue photos later)
 - **Rules**: Booking policies, restrictions, and guidelines (2-4 per venue)
-- **Pricing**: Per 3-hour session (halls) or per day (open spaces/gallery)
+- **Pricing**: Per session (halls) or per day (open spaces/gallery)
   - GST: 9% CGST + 9% SGST = 18% total
   - Extra charges: ₹1,400 for Saturday/Sunday/Public Holidays
 
@@ -218,7 +218,7 @@ Get complete venue details including facilities, images, rules, and pricing.
   "pricing": [
     {
       "id": 1,
-      "priceItemName": "3-Hour Session (Weekday)",
+      "priceItemName": "Session (Weekday)",
       "chargeUnit": "Session",
       "amount": 30000.00,
       "refundableDeposit": 12000.00,
@@ -317,7 +317,7 @@ Modify rates in VenuePricing:
 UPDATE dbo.VenuePricing
 SET Amount = 35000.00,
     EffectiveFrom = CAST(GETDATE() AS DATE)
-WHERE VenueId = 1 AND PriceItemName = '3-Hour Session (Weekday)';
+WHERE VenueId = 1 AND PriceItemName = 'Session (Weekday)';
 ```
 
 ### Adding New Venues

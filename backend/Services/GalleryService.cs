@@ -20,6 +20,7 @@ public class GalleryService : IGalleryService
             Description = i.Description,
             FilePath = i.FilePath,
             MediaType = i.MediaType,
+            VideoURL = i.VideoURL,
             ThumbnailPath = i.ThumbnailPath,
             DisplayOrder = i.DisplayOrder,
             IsActive = i.IsActive
@@ -34,6 +35,7 @@ public class GalleryService : IGalleryService
             Description = dto.Description,
             FilePath = dto.FilePath,
             MediaType = dto.MediaType,
+            VideoURL = dto.VideoURL,
             ThumbnailPath = dto.ThumbnailPath,
             DisplayOrder = dto.DisplayOrder,
             IsActive = dto.IsActive

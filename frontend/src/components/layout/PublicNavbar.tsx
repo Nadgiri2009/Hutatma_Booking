@@ -149,7 +149,7 @@ const PublicNavbar: React.FC = () => {
                 size={isMobile ? 'small' : 'medium'}
                 sx={{ py: 0.8, whiteSpace: 'nowrap' }}
               >
-                Admin Login
+                {isMobile ? 'Staff Login' : 'Login'}
               </Button>
 
             {/* Mobile hamburger */}

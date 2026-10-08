@@ -120,7 +120,7 @@ DECLARE @Venues TABLE (
 );
 
 INSERT INTO @Venues VALUES
-('Main Hall', 'Main auditorium/hall booking categories charged per 3-hour slot as per HSM rate chart dated 12/09/2023.', NULL, 'Hutatma Smruti Mandir', 'Active', 1),
+('Main Hall', 'Main auditorium/hall booking categories charged per selected session as per HSM rate chart dated 12/09/2023.', NULL, 'Hutatma Smruti Mandir', 'Active', 1),
 ('Open Space in Front of VIP Room', 'Open space measuring 60 x 40, charged per day.', NULL, 'In front of VIP Room', 'Active', 2),
 ('Parking-side Space 25 x 40', 'Parking-side open space measuring 25 x 40, charged per day.', NULL, 'Parking side', 'Active', 3),
 ('Parking-side Space Complete', 'Complete parking-side open space, charged per day.', NULL, 'Parking side', 'Active', 4),
@@ -176,15 +176,15 @@ DECLARE @Pricing TABLE (
 );
 
 INSERT INTO @Pricing VALUES
-(@MainHall, 'Gathering - Private / School', 'Per 3-hour slot', 20000, 12000, 1),
-(@MainHall, 'Govt / Semi-Govt / ZP / Entertainment', 'Per 3-hour slot', 10000, 12000, 2),
-(@MainHall, 'Ceremony / Conference', 'Per 3-hour slot', 12000, 12000, 3),
-(@MainHall, 'Lecture', 'Per 3-hour slot', 7500, 12000, 4),
-(@MainHall, 'Orchestra / Gazal / Singing', 'Per 3-hour slot', 7500, 12000, 5),
-(@MainHall, 'Lavni / Dance / Fashion Show', 'Per 3-hour slot', 15000, 12000, 6),
-(@MainHall, 'Drama / Magic', 'Per 3-hour slot', 8000, 12000, 7),
-(@MainHall, 'Children Drama / Balnatya', 'Per 3-hour slot', 3000, 12000, 8),
-(@MainHall, 'Rehearsal - Stage Only', 'Per 3-hour slot', 3000, 12000, 9),
+(@MainHall, 'Gathering - Private / School', 'Per slot', 20000, 12000, 1),
+(@MainHall, 'Govt / Semi-Govt / ZP / Entertainment', 'Per slot', 10000, 12000, 2),
+(@MainHall, 'Ceremony / Conference', 'Per slot', 12000, 12000, 3),
+(@MainHall, 'Lecture', 'Per slot', 7500, 12000, 4),
+(@MainHall, 'Orchestra / Gazal / Singing', 'Per slot', 7500, 12000, 5),
+(@MainHall, 'Lavni / Dance / Fashion Show', 'Per slot', 15000, 12000, 6),
+(@MainHall, 'Drama / Magic', 'Per slot', 8000, 12000, 7),
+(@MainHall, 'Children Drama / Balnatya', 'Per slot', 3000, 12000, 8),
+(@MainHall, 'Rehearsal - Stage Only', 'Per slot', 3000, 12000, 9),
 (@OpenVip, 'Open Space in Front of VIP Room 60 x 40', 'Per day', 7500, 0, 10),
 (@ParkingPartial, 'Parking-side Space 25 x 40', 'Per day', 6000, 0, 11),
 (@ParkingFull, 'Parking-side Space - Complete', 'Per day', 12000, 0, 12),
@@ -242,7 +242,7 @@ DECLARE @Rules TABLE (VenueId INT, RuleTitle NVARCHAR(200), RuleText NVARCHAR(MA
 INSERT INTO @Rules VALUES
 (@MainHall, 'GST', 'CGST 9% and SGST 9% are applicable on chargeable rent and add-on services.', 1),
 (@MainHall, 'Holiday surcharge', 'Saturday, Sunday and public holiday bookings carry an additional Rs. 500 surcharge.', 2),
-(@MainHall, 'Extra time', 'Extra time beyond a 3-hour hall slot is charged at Rs. 2,500 per hour plus applicable GST.', 3),
+(@MainHall, 'Extra time', 'Extra time is charged at Rs. 2,500 per hour plus applicable GST.', 3),
 (@MainHall, 'Local artist discount', 'Local Solapur artists are eligible for 20% discount where applicable.', 4),
 (@MainHall, 'Refundable deposit', 'Main hall bookings carry a refundable security deposit of Rs. 12,000.', 5),
 (@MainHall, 'Staff responsibility', 'Door keeper and seating indicator staff are the responsibility of the organiser.', 6),
@@ -259,6 +259,27 @@ WHERE r.VenueId IS NOT NULL
       SELECT 1 FROM dbo.VenueRules x
       WHERE x.VenueId = r.VenueId AND x.RuleTitle = r.RuleTitle
   );
+
+UPDATE dbo.VenuePricing
+SET ChargeUnit = 'Per slot'
+WHERE ChargeUnit LIKE '%hour slot%';
+
+UPDATE dbo.VenuePricing
+SET PriceItemName = 'Session (Weekday)'
+WHERE PriceItemName LIKE '%Hour Session (Weekday)%';
+
+UPDATE dbo.VenueMaster
+SET Description = 'Main auditorium/hall booking categories charged per selected session as per HSM rate chart dated 12/09/2023.'
+WHERE VenueName = 'Main Hall' AND Description LIKE '%hour slot%';
+
+UPDATE dbo.VenueRules
+SET RuleText = CASE RuleTitle
+    WHEN 'Extra time' THEN 'Extra time is charged at Rs. 2,500 per hour plus applicable GST.'
+    WHEN 'Deposit Refund' THEN 'Refundable deposit of Rs.12,000/- per session'
+    WHEN 'Booking Duration' THEN 'Minimum one session or full day booking'
+    ELSE RuleText
+END
+WHERE RuleText LIKE '%hour slot%' OR RuleText LIKE '%hour session%';
 
 GO
 

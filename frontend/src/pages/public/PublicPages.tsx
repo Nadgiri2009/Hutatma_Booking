@@ -147,8 +147,7 @@ export const AboutVenuePage: React.FC = () => (
           <Grid item xs={12} md={6}>
             <Paper sx={{
               height: 400, borderRadius: 3, overflow: 'hidden',
-              backgroundImage: 'url(https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?w=800&q=80)',
-              backgroundSize: 'cover', backgroundPosition: 'center',
+              background: 'linear-gradient(135deg, #ead8e8 0%, #f7edf5 50%, #e2d6ec 100%)',
             }} />
           </Grid>
         </Grid>
@@ -372,20 +371,29 @@ export const GalleryPage: React.FC = () => {
   const [videos, setVideos]   = useState<any[]>([]);
   const [tab, setTab]         = useState<'photos' | 'videos'>('photos');
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    galleryAPI.getAll('Photo').then((r) => setImages(r.data)).catch(() => {});
-    galleryAPI.getAll('Video').then((r) => setVideos(r.data)).catch(() => {});
+    let active = true;
+    Promise.all([galleryAPI.getAll('Photo'), galleryAPI.getAll('Video')])
+      .then(([photoResponse, videoResponse]) => {
+        if (!active) return;
+        setImages(photoResponse.data);
+        setVideos(videoResponse.data);
+      })
+      .catch(() => {
+        if (active) setError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
   }, []);
 
-  const demoImages = [
-    'C:\\Users\\16507\\Pictures\\Screenshots\\Screenshot 2024-06-17 195029.png',
-    'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80',
-    'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=600&q=80',
-    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=600&q=80',
-    'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=600&q=80',
-    'https://images.unsplash.com/photo-1531058020387-3be344556be6?w=600&q=80',
-  ];
+  const photos = images.filter((image) => image.thumbnailPath || image.filePath);
+  const playableVideos = videos.filter((video) => video.videoURL || video.filePath);
 
   return (
     <Box>
@@ -413,26 +421,54 @@ export const GalleryPage: React.FC = () => {
             ))}
           </Box>
 
+          {error && <Alert severity="error" sx={{ mb: 3 }}>Gallery items could not be loaded. Please try again later.</Alert>}
+          {loading && <Box textAlign="center" py={4}><CircularProgress /></Box>}
+
           {tab === 'photos' && (
-            <ImageList cols={3} gap={12} sx={{ m: 0 }}>
-              {demoImages.map((src, i) => (
-                <ImageListItem key={i} sx={{ cursor: 'pointer', borderRadius: 2, overflow: 'hidden' }}
-                  onClick={() => setLightbox(src)}>
-                  <img
-                    src={src}
-                    alt={`Gallery ${i + 1}`}
-                    loading="lazy"
-                    style={{ borderRadius: 8, transition: 'transform 0.3s', objectFit: 'cover', height: 220 }}
-                  />
-                </ImageListItem>
-              ))}
-            </ImageList>
+            !loading && !error && (photos.length > 0 ? (
+              <ImageList cols={3} gap={12} sx={{ m: 0 }}>
+                {photos.map((image) => {
+                  const src = image.thumbnailPath || image.filePath;
+                  return (
+                    <ImageListItem key={image.id} sx={{ cursor: 'pointer', borderRadius: 2, overflow: 'hidden' }}
+                      onClick={() => setLightbox(src)}>
+                      <img
+                        src={src}
+                        alt={image.title}
+                        loading="lazy"
+                        style={{ borderRadius: 8, transition: 'transform 0.3s', objectFit: 'cover', height: 220 }}
+                      />
+                    </ImageListItem>
+                  );
+                })}
+              </ImageList>
+            ) : (
+              <Typography textAlign="center" color="text.secondary" py={6}>No photos have been added yet.</Typography>
+            ))
           )}
 
           {tab === 'videos' && (
-            <Box sx={{ textAlign: 'center', py: 6 }}>
-              <Typography variant="body1" color="text.secondary">No videos uploaded yet.</Typography>
-            </Box>
+            !loading && !error && (playableVideos.length > 0 ? (
+              <Grid container spacing={3}>
+                {playableVideos.map((video) => (
+                  <Grid item xs={12} md={6} key={video.id}>
+                    <Paper sx={{ overflow: 'hidden', p: 2 }}>
+                      {video.videoURL ? (
+                        <Box component="iframe" src={video.videoURL} title={video.title}
+                          sx={{ width: '100%', aspectRatio: '16 / 9', border: 0 }} allowFullScreen />
+                      ) : video.filePath ? (
+                        <Box component="video" src={video.filePath} controls
+                          sx={{ width: '100%', aspectRatio: '16 / 9' }} />
+                      ) : null}
+                      <Typography variant="h6" sx={{ mt: 1 }}>{video.title}</Typography>
+                      {video.description && <Typography color="text.secondary">{video.description}</Typography>}
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Typography textAlign="center" color="text.secondary" py={6}>No videos have been added yet.</Typography>
+            ))
           )}
         </Container>
       </Box>

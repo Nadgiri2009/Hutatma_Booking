@@ -96,17 +96,19 @@ export const AdminGalleryPage: React.FC = () => {
         {filtered.map((item) => (
           <Grid item xs={12} sm={6} md={4} key={item.id}>
             <Card sx={{ height: '100%' }}>
-              <CardMedia
-                component="img"
-                height={180}
-                image={
-                  item.thumbnailPath ||
-                  item.filePath ||
-                  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&q=80'
-                }
-                alt={item.title}
-                sx={{ objectFit: 'cover' }}
-              />
+              {item.thumbnailPath || (item.mediaType === 'Photo' && item.filePath) ? (
+                <CardMedia
+                  component="img"
+                  height={180}
+                  image={item.thumbnailPath || item.filePath}
+                  alt={item.title}
+                  sx={{ objectFit: 'cover' }}
+                />
+              ) : (
+                <Box sx={{ height: 180, display: 'grid', placeItems: 'center', bgcolor: 'action.hover' }}>
+                  {item.mediaType === 'Photo' ? <Image sx={{ fontSize: 48, color: 'text.disabled' }} /> : <VideoLibrary sx={{ fontSize: 48, color: 'text.disabled' }} />}
+                </Box>
+              )}
               <CardContent sx={{ pb: 0 }}>
                 <Typography variant="subtitle2" fontWeight={600} noWrap>{item.title}</Typography>
                 {item.description && (

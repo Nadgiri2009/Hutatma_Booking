@@ -1,12 +1,12 @@
 /*
   Venue data extracted from Hutatma Smruti Mandir Rate Card (Marathi PDF)
-  Includes 12 venue/hall types with details, facilities, images, and rules.
+  Includes 12 venue/hall types with details, facilities, and rules.
   
   Data Source: 
   - Page 1-2: Hall types 1-5 (Hutatma Smruti Mandir for various events)
   - Page 2-3: Hall types 6-13 (Drama, Dance, Gallery, Open spaces, etc.)
   
-  Pricing: Refundable deposit Rs.12000/- per hall (3-hour slots)
+  Pricing: Refundable deposit Rs.12000/- per hall session
   Location: Hutatma Chowk, Solapur, MH 413001
 */
 
@@ -34,16 +34,11 @@ VALUES
   (@VenueId1, 'Air Conditioning', 'Full AC coverage', 1, 4),
   (@VenueId1, 'Lighting', 'Professional stage lighting', 1, 5);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId1, 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80', 'Main Hall - Front View', 1, 1, 1),
-  (@VenueId1, 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80', 'Stage View with Lighting', 0, 1, 2);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
   (@VenueId1, 'Timings', 'Venue must be vacated by 11:00 PM', 1, 1),
   (@VenueId1, 'No Smoking', 'Smoking is strictly prohibited inside the venue', 1, 2),
-  (@VenueId1, 'Deposit Refund', 'Refundable deposit of Rs.12,000/- per 3-hour session', 1, 3),
+  (@VenueId1, 'Deposit Refund', 'Refundable deposit of Rs.12,000/- per session', 1, 3),
   (@VenueId1, 'Weekend/Holiday', 'Extra charges apply on Saturdays, Sundays and Public Holidays', 1, 4);
 
 -- ============================================================================
@@ -67,13 +62,9 @@ VALUES
   (@VenueId2, 'Air Conditioning', 'Full AC coverage', 1, 3),
   (@VenueId2, 'High-Speed Internet', 'WiFi connectivity for presentations', 1, 4);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId2, 'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=600&q=80', 'Government Hall Setup', 1, 1, 1);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
-  (@VenueId2, 'Booking Duration', 'Minimum 3-hour session or full day booking', 1, 1),
+  (@VenueId2, 'Booking Duration', 'Minimum one session or full day booking', 1, 1),
   (@VenueId2, 'Parking', 'Limited parking available on-site', 1, 2),
   (@VenueId2, 'Catering', 'Outside catering permitted with management approval', 1, 3);
 
@@ -98,10 +89,6 @@ VALUES
   (@VenueId3, 'Sound System', 'Professional PA system with wireless microphones', 1, 3),
   (@VenueId3, 'Reception Area', 'Dedicated reception and registration space', 1, 4),
   (@VenueId3, 'Catering Kitchen', 'In-house catering facilities', 1, 5);
-
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId3, 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80', 'Conference Setup', 1, 1, 1);
 
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
@@ -130,10 +117,6 @@ VALUES
   (@VenueId4, 'Sound & Projection', 'Full HD projection with sound system', 1, 3),
   (@VenueId4, 'Lighting Control', 'Advanced lighting control panel', 1, 4);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId4, 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80', 'Lecture Hall Setup', 1, 1, 1);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
   (@VenueId4, 'Speaker Support', 'Technical support team available for presentations', 1, 1),
@@ -160,11 +143,6 @@ VALUES
   (@VenueId5, 'Stage Lighting', 'Advanced lighting for performances', 1, 3),
   (@VenueId5, 'Musician Green Room', 'Dedicated preparation area for artists', 1, 4),
   (@VenueId5, 'Acoustic Tuning', 'Professional acoustics optimized for music', 1, 5);
-
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId5, 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80', 'Performance Stage', 1, 1, 1),
-  (@VenueId5, 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=600&q=80', 'Concert Lighting', 0, 1, 2);
 
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
@@ -194,10 +172,6 @@ VALUES
   (@VenueId6, 'Dressing Rooms', 'Multiple dressing rooms for artists', 1, 4),
   (@VenueId6, 'Stage Lighting', 'Colored lighting for dance performances', 1, 5);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId6, 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&q=80', 'Dance Floor Setup', 1, 1, 1);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
   (@VenueId6, 'Floor Protection', 'Dance floor must be protected; dancing shoes mandatory', 1, 1),
@@ -224,10 +198,6 @@ VALUES
   (@VenueId7, 'Sound & Lights', 'Professional theater lighting and sound', 1, 3),
   (@VenueId7, 'Dressing Rooms', 'Multiple dressing rooms', 1, 4);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId7, 'https://images.unsplash.com/photo-1493514789a59-40635f77afca?w=600&q=80', 'Theater Stage', 1, 1, 1);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
   (@VenueId7, 'Stage Safety', 'All props and stage setup must be structurally safe', 1, 1),
@@ -252,10 +222,6 @@ VALUES
   (@VenueId8, 'Low Stage', 'Stage designed for children performances', 1, 1),
   (@VenueId8, 'Soft Lighting', 'Child-friendly lighting', 1, 2),
   (@VenueId8, 'Safety Rails', 'Safety railings around stage', 1, 3);
-
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId8, 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=600&q=80', 'Children Performance Space', 1, 1, 1);
 
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
@@ -282,10 +248,6 @@ VALUES
   (@VenueId9, 'Sound System', 'Basic sound system for practice', 1, 2),
   (@VenueId9, 'Mirrors', 'Practice mirrors for dancers', 1, 3);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId9, 'https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=600&q=80', 'Rehearsal Space', 1, 1, 1);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
   (@VenueId9, 'Rehearsal Only', 'For rehearsals and practice sessions only; public performances not allowed', 1, 1),
@@ -311,10 +273,6 @@ VALUES
   (@VenueId10, 'Lighting', 'Gallery lighting to highlight artworks', 1, 2),
   (@VenueId10, 'Climate Control', 'Temperature and humidity controlled', 1, 3);
 
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId10, 'https://images.unsplash.com/photo-1561214115-6d2f1b0609fa?w=600&q=80', 'Gallery Space', 1, 1, 1);
-
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
   (@VenueId10, 'Art Protection', 'All artworks must be properly insured and protected', 1, 1),
@@ -338,10 +296,6 @@ INSERT INTO dbo.VenueFacilities (VenueId, FacilityName, Description, IsActive, D
 VALUES
   (@VenueId11, 'Open Space', '50x50 feet outdoor space', 1, 1),
   (@VenueId11, 'Electricity Points', 'Multiple electrical outlets available', 1, 2);
-
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId11, 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=600&q=80', 'Open Space Setup', 1, 1, 1);
 
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES
@@ -367,10 +321,6 @@ VALUES
   (@VenueId12, 'Open Exhibition Space', '25x50 feet area for exhibitions and stalls', 1, 1),
   (@VenueId12, 'Parking Proximity', 'Adjacent to parking area for easy access', 1, 2),
   (@VenueId12, 'Electricity Supply', 'Electrical connections available for stalls', 1, 3);
-
-INSERT INTO dbo.VenueImages (VenueId, ImageUrl, Caption, IsPrimary, IsActive, DisplayOrder)
-VALUES
-  (@VenueId12, 'https://images.unsplash.com/photo-1493857671505-72967e2e2760?w=600&q=80', 'Exhibition & Parking Space', 1, 1, 1);
 
 INSERT INTO dbo.VenueRules (VenueId, RuleTitle, RuleText, IsActive, DisplayOrder)
 VALUES

@@ -311,9 +311,13 @@ const HomePage: React.FC = () => {
             <Grid item xs={12} md={6}>
               <Paper
                 sx={{
-                  height: 320, borderRadius: 3, overflow: 'hidden',
-                  backgroundImage: 'url(https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80)',
-                  backgroundSize: 'cover', backgroundPosition: 'center',
+                  height: 320,
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                  backgroundImage: `url(${slide.image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  transition: 'background-image 0.5s ease',
                 }}
               />
             </Grid>

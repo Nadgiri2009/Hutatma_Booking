@@ -24,11 +24,18 @@ const statusColors: any = {
 };
 
 const sessionLabel = (s: string) => (s === 'FullDay' ? 'Full Day' : s);
+const bookingStatusLabel = (status: string) =>
+  status === 'ForceCancelled' || status === 'Force Cancelled' ? 'Force Cancelled' : status;
+const todayKey = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
 
 interface AdminApplicantForm {
   fullName: string;
   email: string;
   mobile: string;
+  alternateMobile: string;
   address: string;
   functionName: string;
   functionType: string;
@@ -49,6 +56,8 @@ const AdminBookingsPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [venues, setVenues] = useState<any[]>([]);
   const [pricing, setPricing] = useState<any[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = useState<any[]>([]);
+  const [equipmentQuantities, setEquipmentQuantities] = useState<Record<number, number>>({});
   const [summary, setSummary] = useState<any>(null);
   const [slotAvailability, setSlotAvailability] = useState<Record<string, boolean>>({});
   const [checkingSlots, setCheckingSlots] = useState(false);
@@ -60,7 +69,7 @@ const AdminBookingsPage: React.FC = () => {
   const [createForm, setCreateForm] = useState({
     venueId: 0,
     venuePricingId: 0,
-    applicant: { fullName: '', email: '', mobile: '', address: '', functionName: '', functionType: '', expectedGuests: 0, idProofType: '' } as AdminApplicantForm,
+    applicant: { fullName: '', email: '', mobile: '', alternateMobile: '', address: '', functionName: '', functionType: '', expectedGuests: 0, idProofType: '' } as AdminApplicantForm,
     bankDetail: { bankName: '', accountHolderName: '', accountNumber: '', ifscCode: '', branchName: '', micrCode: '' },
   });
 
@@ -143,13 +152,21 @@ const AdminBookingsPage: React.FC = () => {
     setCreateOpen(true);
     setSummary(null);
     setSelectedSessions([]);
+    setEquipmentQuantities({});
     setProofFile(null);
     setNewFromDate('');
     setNewToDate('');
+    setCreateForm({
+      venueId: 0,
+      venuePricingId: 0,
+      applicant: { fullName: '', email: '', mobile: '', alternateMobile: '', address: '', functionName: '', functionType: '', expectedGuests: 0, idProofType: '' },
+      bankDetail: { bankName: '', accountHolderName: '', accountNumber: '', ifscCode: '', branchName: '', micrCode: '' },
+    });
     try {
-      const response = await venueAPI.getAll();
+      const [response, equipmentResponse] = await Promise.all([venueAPI.getAll(), venueAPI.getEquipment()]);
       const activeVenues = response.data || [];
       setVenues(activeVenues);
+      setEquipmentOptions(equipmentResponse.data || []);
       const venueId = activeVenues[0]?.venueId || 0;
       setCreateForm((current) => ({ ...current, venueId, venuePricingId: 0 }));
       if (venueId) {
@@ -193,6 +210,9 @@ const AdminBookingsPage: React.FC = () => {
         fromDate: newFromDate,
         toDate: newToDate,
         session: selectedSessions.join(','),
+        equipment: Object.entries(equipmentQuantities)
+          .filter(([, quantity]) => quantity > 0)
+          .map(([equipmentId, quantity]) => ({ equipmentId: Number(equipmentId), quantity })),
       });
       setSummary(response.data);
     } catch (error: any) {
@@ -206,14 +226,18 @@ const AdminBookingsPage: React.FC = () => {
     if (applicant.fullName.trim().length < 3
         || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicant.email)
         || !/^[6-9]\d{9}$/.test(applicant.mobile)
+        || (applicant.alternateMobile.trim() !== '' && !/^[6-9]\d{9}$/.test(applicant.alternateMobile))
         || applicant.address.trim().length < 10
         || !applicant.functionName.trim()
         || !applicant.functionType.trim()
         || applicant.expectedGuests < 1
         || applicant.expectedGuests > 10000
-        || !applicant.idProofType.trim()
-        || !proofFile) {
-      toast.error('Complete the required applicant details and attach the citizen ID proof.');
+        || !['Wedding', 'Reception', 'Birthday', 'Corporate Meeting', 'Conference', 'Exhibition', 'Cultural Event', 'Other'].includes(applicant.functionType)
+        || !['Aadhaar Card', 'PAN Card', 'Driving License'].includes(applicant.idProofType)
+        || !proofFile
+        || !['application/pdf', 'image/jpeg'].includes(proofFile.type)
+        || proofFile.size > 5 * 1024 * 1024) {
+      toast.error('Complete the applicant details and attach a PDF or JPG ID proof of 5 MB or less.');
       return;
     }
     if (!bank.bankName.trim()
@@ -224,7 +248,7 @@ const AdminBookingsPage: React.FC = () => {
       toast.error('Complete valid bank details for any refund processing.');
       return;
     }
-    if (!summary || newFromDate < new Date().toISOString().slice(0, 10)) {
+    if (!summary || newFromDate < todayKey()) {
       toast.error('Select a future booking date and calculate the amount before creating the booking.');
       return;
     }
@@ -237,9 +261,12 @@ const AdminBookingsPage: React.FC = () => {
         fromDate: newFromDate,
         toDate: newToDate,
         session: selectedSessions.join(','),
+        equipment: Object.entries(equipmentQuantities)
+          .filter(([, quantity]) => quantity > 0)
+          .map(([equipmentId, quantity]) => ({ equipmentId: Number(equipmentId), quantity })),
         applicant: {
           ...applicant,
-          alternateMobile: null,
+          alternateMobile: applicant.alternateMobile || null,
           idProofFile,
         },
         bankDetail: { ...bank, ifscCode: bank.ifscCode.toUpperCase(), micrCode: bank.micrCode || null },
@@ -322,6 +349,7 @@ const AdminBookingsPage: React.FC = () => {
                 <MenuItem value="PendingPayment">Payment Pending</MenuItem>
                 <MenuItem value="Confirmed">Confirmed</MenuItem>
                 <MenuItem value="Cancelled">Cancelled</MenuItem>
+                <MenuItem value="ForceCancelled">Force Cancelled</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -398,7 +426,7 @@ const AdminBookingsPage: React.FC = () => {
                     <Typography variant="body2" fontWeight={700}>{fmt(b.grandTotal)}</Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip label={b.status} color={statusColors[b.status]} size="small" sx={{ fontSize: '0.72rem' }} />
+                    <Chip label={bookingStatusLabel(b.status)} color={statusColors[b.status]} size="small" sx={{ fontSize: '0.72rem' }} />
                   </TableCell>
                   <TableCell>
                     <Typography variant="caption">
@@ -452,7 +480,7 @@ const AdminBookingsPage: React.FC = () => {
                   ['To Date',     new Date(selected.toDate).toLocaleDateString('en-IN')],
                   ['Session',     sessionLabel(selected.session)],
                   ['Total Days',  `${selected.totalDays} day(s)`],
-                  ['Status',      selected.status],
+                  ['Status',      bookingStatusLabel(selected.status)],
                 ].map(([k, v]) => (
                   <Box key={k} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.7, borderBottom: '1px solid #f0f0f0' }}>
                     <Typography variant="body2" color="text.secondary">{k}</Typography>
@@ -519,7 +547,7 @@ const AdminBookingsPage: React.FC = () => {
                       color="error"
                       variant="outlined"
                       onClick={() => forceCancel(selected)}
-                      disabled={selected.status === 'Cancelled' || selected.status === 'ForceCancelled' || selected.status === 'Force Cancelled'}
+                      disabled={selected.status === 'Cancelled' || selected.status === 'ForceCancelled' || selected.status === 'Force Cancelled' || selected.paymentStatus !== 'Paid'}
                     >
                       Force Cancellation
                     </Button>
@@ -569,8 +597,8 @@ const AdminBookingsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}><TextField fullWidth size="small" type="date" label="From Date" value={newFromDate} onChange={(event) => { setNewFromDate(event.target.value); setSummary(null); }} InputLabelProps={{ shrink: true }} /></Grid>
-            <Grid item xs={12} sm={6}><TextField fullWidth size="small" type="date" label="To Date" value={newToDate} onChange={(event) => { setNewToDate(event.target.value); setSummary(null); }} InputLabelProps={{ shrink: true }} /></Grid>
+            <Grid item xs={12} sm={6}><TextField fullWidth size="small" type="date" label="From Date" value={newFromDate} inputProps={{ min: todayKey() }} onChange={(event) => { setNewFromDate(event.target.value); setSummary(null); }} InputLabelProps={{ shrink: true }} /></Grid>
+            <Grid item xs={12} sm={6}><TextField fullWidth size="small" type="date" label="To Date" value={newToDate} inputProps={{ min: todayKey() }} onChange={(event) => { setNewToDate(event.target.value); setSummary(null); }} InputLabelProps={{ shrink: true }} /></Grid>
             <Grid item xs={12}>
               <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>Select available slots</Typography>
               <ToggleButtonGroup
@@ -597,16 +625,16 @@ const AdminBookingsPage: React.FC = () => {
             {([
               ['fullName', 'Full Name', 'text'],
               ['mobile', 'Mobile Number', 'tel'],
+              ['alternateMobile', 'Alternate Mobile (Optional)', 'tel'],
               ['email', 'Email', 'email'],
               ['address', 'Address', 'text'],
               ['functionName', 'Function Name', 'text'],
-              ['functionType', 'Function Type', 'text'],
               ['expectedGuests', 'Expected Guests', 'number'],
-              ['idProofType', 'ID Proof Type', 'text'],
             ] as const).map(([field, label, type]) => (
               <Grid item xs={12} sm={6} key={field}>
                 <TextField
-                  fullWidth size="small" type={type} required label={label}
+                  fullWidth size="small" type={type} required={field !== 'alternateMobile'} label={label}
+                  inputProps={field === 'expectedGuests' ? { min: 1, max: 10000 } : undefined}
                   value={createForm.applicant[field]}
                   onChange={(event) => field === 'expectedGuests'
                     ? updateApplicant(field, Math.max(0, Number(event.target.value)))
@@ -614,11 +642,28 @@ const AdminBookingsPage: React.FC = () => {
                 />
               </Grid>
             ))}
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small" required>
+                <InputLabel>Function Type</InputLabel>
+                <Select value={createForm.applicant.functionType} label="Function Type" onChange={(event) => updateApplicant('functionType', event.target.value)}>
+                  {['Wedding', 'Reception', 'Birthday', 'Corporate Meeting', 'Conference', 'Exhibition', 'Cultural Event', 'Other'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small" required>
+                <InputLabel>ID Proof Type</InputLabel>
+                <Select value={createForm.applicant.idProofType} label="ID Proof Type" onChange={(event) => updateApplicant('idProofType', event.target.value)}>
+                  {['Aadhaar Card', 'PAN Card', 'Driving License'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={12}>
               <Button component="label" variant="outlined">
                 {proofFile?.name || 'Upload Citizen ID Proof *'}
-                <input hidden type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setProofFile(event.target.files?.[0] || null)} />
+                <input hidden type="file" accept=".pdf,.jpg,.jpeg" onChange={(event) => setProofFile(event.target.files?.[0] || null)} />
               </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>PDF or JPG, max 5 MB</Typography>
             </Grid>
             <Grid item xs={12}><Divider /><Typography variant="subtitle2" fontWeight={700} sx={{ mt: 1 }}>Refund Bank Details</Typography></Grid>
             {([
@@ -640,8 +685,33 @@ const AdminBookingsPage: React.FC = () => {
                 />
               </Grid>
             ))}
+            <Grid item xs={12}>
+              <Divider sx={{ mb: 1 }} />
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Optional Equipment</Typography>
+              <Grid container spacing={1.5}>
+                {equipmentOptions.map((item) => (
+                  <Grid item xs={12} sm={6} md={4} key={item.id}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label={`${item.equipmentName} (${item.chargeUnit} · ₹${item.amount})`}
+                      value={equipmentQuantities[item.id] ?? 0}
+                      inputProps={{ min: 0, step: 1 }}
+                      onChange={(event) => {
+                        setEquipmentQuantities((current) => ({
+                          ...current,
+                          [item.id]: Math.max(0, Math.floor(Number(event.target.value) || 0)),
+                        }));
+                        setSummary(null);
+                      }}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Grid>
             <Grid item xs={12}><Button variant="outlined" onClick={calculateAdminSummary}>Calculate Amount</Button></Grid>
-            {summary && <Grid item xs={12}><Alert severity="info">Base rent ₹{summary.baseRent} · GST ₹{summary.cgstAmount + summary.sgstAmount} · Deposit ₹{summary.securityDeposit} · Total ₹{summary.grandTotal}</Alert></Grid>}
+            {summary && <Grid item xs={12}><Alert severity="info">Base rent ₹{summary.baseRent} · Equipment ₹{summary.equipmentCharge} · GST ₹{summary.cgstAmount + summary.sgstAmount} · Deposit ₹{summary.securityDeposit} · Total ₹{summary.grandTotal}</Alert></Grid>}
           </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>

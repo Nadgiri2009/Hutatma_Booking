@@ -161,7 +161,7 @@ public class BookingsController : ControllerBase
                 Reason = booking.CancelReason,
                 RequestedBy = "Administrator",
                 RefundAmount = paidAmount,
-                RefundStatus = "Refund Workflow",
+                RefundStatus = refund.Status,
                 CreatedAt = now,
             });
             await _db.SaveChangesAsync();
