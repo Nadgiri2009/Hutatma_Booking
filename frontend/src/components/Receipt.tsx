@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, Typography, Grid, Divider, Chip } from '@mui/material';
+import { Box, Paper, Typography, Grid, Divider, Chip, GlobalStyles } from '@mui/material';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 
 // ── Professional single-page Receipt ──────────────────────────────────────────
@@ -45,6 +45,23 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
   const amountPaid = payment?.amount ?? b.grandTotal;
 
   return (
+    <>
+    <GlobalStyles styles={{
+      '@media print': {
+        'body *': { visibility: 'hidden' },
+        '#receipt-printable, #receipt-printable *': { visibility: 'visible' },
+        '#receipt-printable': {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          maxWidth: '100%',
+          margin: 0,
+          boxShadow: 'none',
+          border: 0,
+        },
+      },
+    }} />
     <Paper
       id="receipt-printable"
       variant="outlined"
@@ -194,6 +211,7 @@ const Receipt: React.FC<ReceiptProps> = ({ booking: b, payment }) => {
         </Grid>
       </Box>
     </Paper>
+    </>
   );
 };
 

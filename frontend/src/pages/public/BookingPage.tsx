@@ -8,7 +8,7 @@ import {
 import {
   CheckCircle, ArrowBack, ArrowForward, EventAvailable,
   Assignment, AccountBalance, Payment, ConfirmationNumber,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Download,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -23,6 +23,7 @@ import { bookingAPI, paymentAPI, venueAPI } from '../../services/api';
 import { VenueEquipment } from '../../types/types';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import Receipt from '../../components/Receipt';
 
 const steps = [
   { label: 'Availability',      icon: <EventAvailable /> },
@@ -952,7 +953,7 @@ const Step4BankDetails: React.FC<{ onNext: () => void; onPrev: () => void }> = (
 };
 
 // ── Step 5: Confirm & Submit ───────────────────────────────────────────────────
-const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = ({ onPrev, onComplete }) => {
+const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: (receipt: { booking: any; payment: any }) => void }> = ({ onPrev, onComplete }) => {
   const dispatch = useDispatch();
   const wizard   = useSelector((s: RootState) => s.booking);
   const [loading, setLoading] = useState(false);
@@ -1050,7 +1051,7 @@ const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = (
               });
               console.log('[handler] Payment verification complete:', completeResponse.data);
               dispatch(setBookingResult({ bookingNumber: completeResponse.data.bookingNumber, bookingId: completeResponse.data.bookingId }));
-              onComplete();
+              onComplete(buildPaymentReceipt(wizard, completeResponse.data));
             } catch (e: any) {
               console.error('[handler] Payment verification error:', e);
               toast.error(e?.response?.data?.error || 'Payment verification failed. Please contact support.');
@@ -1077,7 +1078,7 @@ const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = (
           booking: bookingPayload,
         });
         dispatch(setBookingResult({ bookingNumber: completeResponse.data.bookingNumber, bookingId: completeResponse.data.bookingId }));
-        onComplete();
+        onComplete(buildPaymentReceipt(wizard, completeResponse.data));
       }
     } catch (err: any) {
       console.error('[handleSubmit] Error:', err);
@@ -1156,8 +1157,50 @@ const Step5Confirm: React.FC<{ onPrev: () => void; onComplete: () => void }> = (
   );
 };
 
+const buildPaymentReceipt = (wizard: RootState['booking'], payment: any) => ({
+  booking: {
+    id: payment.bookingId,
+    bookingNumber: payment.bookingNumber,
+    receiptNumber: payment.receiptNumber,
+    venueName: wizard.venueName,
+    priceItemName: wizard.priceItemName,
+    fromDate: wizard.fromDate,
+    toDate: wizard.toDate,
+    session: wizard.session,
+    totalDays: wizard.totalDays,
+    baseRent: wizard.baseRent,
+    holidayCharge: wizard.holidayCharge,
+    equipmentCharge: wizard.equipmentCharge,
+    securityDeposit: wizard.securityDeposit,
+    cgstAmount: wizard.cgstAmount,
+    sgstAmount: wizard.sgstAmount,
+    grandTotal: wizard.grandTotal,
+    status: 'Confirmed',
+    applicantName: wizard.applicant.fullName,
+    applicantMobile: wizard.applicant.mobile,
+    applicantEmail: wizard.applicant.email,
+    applicantAddress: wizard.applicant.address,
+    functionName: wizard.applicant.functionName,
+    bankDetail: {
+      bankName: wizard.bankDetail.bankName,
+      accountHolderName: wizard.bankDetail.accountHolderName,
+      accountNumber: wizard.bankDetail.accountNumber,
+      ifscCode: wizard.bankDetail.ifscCode,
+      branchName: wizard.bankDetail.branchName,
+      micrCode: wizard.bankDetail.micrCode,
+    },
+  },
+  payment: {
+    transactionRef: payment.transactionRef,
+    paymentDate: payment.paymentDate,
+    paymentMethod: payment.paymentMethod,
+    status: payment.status,
+    amount: payment.amount,
+  },
+});
+
 // ── Success Screen ─────────────────────────────────────────────────────────────
-const BookingSuccess: React.FC = () => {
+const BookingSuccess: React.FC<{ receipt: { booking: any; payment: any } }> = ({ receipt }) => {
   const dispatch = useDispatch();
   const wizard   = useSelector((s: RootState) => s.booking);
   const navigate = useNavigate();
@@ -1166,32 +1209,26 @@ const BookingSuccess: React.FC = () => {
     <Box textAlign="center" py={4}>
       <CheckCircle sx={{ fontSize: 80, color: '#2e7d32', mb: 2 }} />
       <Typography variant="h4" sx={{ color: '#50175d', fontWeight: 700, mb: 1 }}>
-        Booking Submitted Successfully!
+        Payment Successful — Booking Confirmed
       </Typography>
       <Typography variant="h5" sx={{ color: '#d68db8', fontWeight: 800, mb: 2 }}>
         Booking ID: {wizard.bookingNumber}
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
-        Your date and session are now reserved — there is no admin approval step. Your booking will be
-        automatically confirmed as soon as the payment gateway records a successful payment. Please save your Booking ID for future reference.
+        Your payment has been verified and your booking is confirmed. Your receipt is ready below.
       </Typography>
-      <Alert severity="info" sx={{ textAlign: 'left', maxWidth: 500, mx: 'auto', mb: 3 }}>
-        <strong>Next Steps:</strong>
-        <ol>
-          <li>Complete the secure payment using your selected debit/credit card or UPI option</li>
-          <li>Your booking is confirmed automatically once the payment succeeds</li>
-          <li>Receive SMS and email notifications with your receipt details</li>
-          <li>Download or print your official receipt</li>
-        </ol>
-      </Alert>
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <Button variant="contained" color="primary" onClick={() => navigate('/print-booking')}>
-          View Booking Details
+      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap', mb: 3, displayPrint: 'none' }}>
+        <Button variant="contained" startIcon={<Download />} onClick={() => window.print()}>
+          Download Receipt
         </Button>
         <Button variant="outlined" onClick={() => { dispatch(resetBooking()); navigate('/'); }}>
           Back to Home
         </Button>
       </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3, displayPrint: 'none' }}>
+        In the print dialog, choose “Save as PDF” to download a copy.
+      </Typography>
+      <Receipt booking={receipt.booking} payment={receipt.payment} />
     </Box>
   );
 };
@@ -1201,6 +1238,7 @@ const BookingPage: React.FC = () => {
   const dispatch = useDispatch();
   const wizard   = useSelector((s: RootState) => s.booking);
   const [completed, setCompleted] = useState(false);
+  const [paymentReceipt, setPaymentReceipt] = useState<{ booking: any; payment: any } | null>(null);
   const theme = useTheme();
   const compactSteps = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -1244,14 +1282,22 @@ const BookingPage: React.FC = () => {
 
         <Paper sx={{ p: { xs: 2, md: 4 }, borderRadius: 2 }}>
           {completed ? (
-            <BookingSuccess />
+            paymentReceipt && <BookingSuccess receipt={paymentReceipt} />
           ) : (
             <>
               {step === 0 && <Step1Availability onNext={onNext} />}
               {step === 1 && <Step2Summary onNext={onNext} onPrev={onPrev} />}
               {step === 2 && <Step3Applicant onNext={onNext} onPrev={onPrev} />}
               {step === 3 && <Step4BankDetails onNext={onNext} onPrev={onPrev} />}
-              {step === 4 && <Step5Confirm onPrev={onPrev} onComplete={() => setCompleted(true)} />}
+              {step === 4 && (
+                <Step5Confirm
+                  onPrev={onPrev}
+                  onComplete={(receipt) => {
+                    setPaymentReceipt(receipt);
+                    setCompleted(true);
+                  }}
+                />
+              )}
             </>
           )}
         </Paper>
