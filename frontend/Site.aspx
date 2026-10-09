@@ -8,7 +8,7 @@
     <title>Hutatma Smruti Mandir — Venue Booking</title>
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/site-attached.css?v=20261009-1") %>" />
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/site.css?v=20261009-4") %>" />
-    <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/booking-progress.css?v=20261009-1") %>" />
+    <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/booking-progress.css?v=20261009-2") %>" />
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/steps/availability-step.css?v=20261009-1") %>" />
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/steps/booking-summary-step.css?v=20261009-1") %>" />
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/steps/bank-details-step.css?v=20261009-1") %>" />
