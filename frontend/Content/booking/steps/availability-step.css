@@ -1,0 +1,32 @@
+.availability-step .booking-sessions{border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:4px 0 22px}
+.availability-step .booking-sessions legend{padding:0 6px;font-weight:700;color:var(--purple)}
+.availability-step .booking-sessions:disabled{opacity:.62}
+.availability-step .booking-calendar{padding:18px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.availability-step .calendar-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.availability-step .calendar-heading h3{margin:0;color:var(--purple)}
+.availability-step .calendar-heading button{min-width:42px;padding:7px}
+.availability-step .booking-calendar-grid{grid-template-columns:repeat(7,minmax(0,1fr));margin-top:14px}
+.availability-step .calendar-weekday{padding:7px 2px;text-align:center;font-size:12px;font-weight:700;color:var(--muted)}
+.availability-step .calendar-empty{min-height:42px}
+.availability-step .booking-calendar-grid .calendar-day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:42px;padding:4px;border:1px solid transparent;border-radius:7px;background:#f2f4f7;color:var(--muted);line-height:1.15}
+.availability-step .booking-calendar-grid .calendar-day.available{background:#e7f5e8;color:#1c6a28;border-color:#b7dfba}
+.availability-step .booking-calendar-grid .calendar-day.unavailable{background:#ffebe9;color:#b42318;cursor:not-allowed;opacity:.75}
+.availability-step .booking-calendar-grid .calendar-day.pending{background:#f2f4f7;color:#98a2b3;cursor:not-allowed}
+.availability-step .booking-calendar-grid .calendar-day:disabled{opacity:.6}
+.availability-step .booking-calendar-grid .calendar-day.available:hover{background:#cdebd0}
+.availability-step .booking-calendar-grid .calendar-day.selected{outline:3px solid var(--purple);outline-offset:1px;background:var(--purple);color:#fff}
+.availability-step .booking-calendar-grid .calendar-day.in-range{background:#eee2f1;color:var(--purple)}
+.availability-step .calendar-day-number{font-weight:700}
+.availability-step .calendar-slot-indicators{display:flex;gap:3px;font-size:9px;line-height:1}
+.availability-step .calendar-slot-indicators span{font-weight:750}
+.availability-step .calendar-slot-indicators .slot-open{color:#176b2c}
+.availability-step .calendar-slot-indicators .slot-full{color:#b42318}
+.availability-step .booking-calendar-grid .calendar-day.selected .calendar-slot-indicators .slot-open,.availability-step .booking-calendar-grid .calendar-day.selected .calendar-slot-indicators .slot-full{color:#fff}
+.availability-step .selected-date-range{margin-top:14px;padding:10px 12px;border-radius:7px;background:#f8f4f8;color:var(--purple);font-weight:650}
+.availability-step .calendar-legend{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted)}
+.availability-step .calendar-legend span{display:inline-flex;align-items:center;gap:6px}
+.availability-step .calendar-legend i{width:12px;height:12px;border-radius:3px;background:#f2f4f7;border:1px solid var(--line)}
+.availability-step .calendar-legend i.available{background:#e7f5e8;border-color:#b7dfba}
+.availability-step .calendar-legend i.unavailable{background:#ffebe9;border-color:#f4b8b3}
+.availability-step .calendar-legend i.pending{background:#f2f4f7}
+@media(max-width:600px){.availability-step .booking-calendar{padding:12px}.availability-step .booking-calendar-grid .calendar-day{min-height:38px;padding:2px}.availability-step .calendar-empty{min-height:38px}}

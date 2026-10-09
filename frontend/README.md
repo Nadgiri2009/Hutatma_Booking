@@ -27,4 +27,6 @@ Public: about, gallery, contact/complaints, booking, booking lookup/print, refun
 
 The booking flow no longer collects or displays applicant details. Booking submission remains blocked until the citizen profile API is connected and required applicant details can be loaded from the main database.
 
+The four booking steps are separated into reusable JavaScript modules with step-scoped styles. See [BOOKING-WORKFLOW-INTEGRATION.md](BOOKING-WORKFLOW-INTEGRATION.md) for the complete file list, shared context contract, and integration instructions.
+
 Admin: dashboard, bookings, slot availability, payments, venues/pricing, holidays, gallery, notices, complaints, cancellations, refund requests, users, audit report, and receipt printing.
