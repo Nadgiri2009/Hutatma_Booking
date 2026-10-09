@@ -23,6 +23,8 @@ The friendly routes mirror the existing frontend routes. Admin screens use the e
 
 ## Pages
 
-Public: home, about, gallery, contact/complaints, booking, booking lookup/print, refund application, cancellation application, and refund tracking.
+Public: about, gallery, contact/complaints, booking, booking lookup/print, refund application, cancellation application, and refund tracking. The root route opens the booking flow directly.
+
+The booking flow no longer collects or displays applicant details. Booking submission remains blocked until the citizen profile API is connected and required applicant details can be loaded from the main database.
 
 Admin: dashboard, bookings, slot availability, payments, venues/pricing, holidays, gallery, notices, complaints, cancellations, refund requests, users, audit report, and receipt printing.

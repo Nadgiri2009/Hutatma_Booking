@@ -9,7 +9,7 @@ namespace HutatmaBooking.WebForms
         protected void Application_Start()
         {
             RouteTable.Routes.Ignore("{resource}.axd/{*pathInfo}");
-            AddRoute("", "home");
+            AddRoute("", "book");
             AddRoute("about", "about");
             AddRoute("gallery", "gallery");
             AddRoute("contact", "contact");

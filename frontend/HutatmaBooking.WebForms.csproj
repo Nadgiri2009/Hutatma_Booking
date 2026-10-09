@@ -53,6 +53,7 @@
     <Content Include="README.md" />
     <Content Include="Scripts\app.js" />
     <Content Include="Content\site.css" />
+    <Content Include="Content\site-attached.css" />
     <Content Include="HSM.jpg" />
     <Content Include="HSM-1.jpg" />
     <Content Include="HSM-2.jpg" />
