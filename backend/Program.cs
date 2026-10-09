@@ -11,15 +11,16 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text;
 
-var aspnetCoreEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-if (string.IsNullOrWhiteSpace(aspnetCoreEnv))
-{
-    Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
-    Console.WriteLine("ASPNETCORE_ENVIRONMENT was not set. Defaulting to Development.");
-}
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+
+var allowedOrigins = (builder.Configuration["AllowedOrigins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+if (builder.Environment.IsProduction() &&
+    (allowedOrigins.Length == 0 || allowedOrigins.Any(origin => origin == "*")))
+{
+    throw new InvalidOperationException("Production requires an explicit AllowedOrigins list.");
+}
 
 // Serilog
 Log.Logger = new LoggerConfiguration()
@@ -135,15 +136,27 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddCors(opt =>
-    opt.AddPolicy("AllowFrontend", p =>
-        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod())
-    );
+    opt.AddPolicy("AllowFrontend", policy =>
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hutatma Booking API v1"));
+if (!app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hutatma Booking API v1"));
+}
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/idproofs"))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    await next();
+});
 app.UseStaticFiles();
 app.UseCors("AllowFrontend");
 app.UseMiddleware<ExceptionMiddleware>();
@@ -163,6 +176,7 @@ try
 catch (Exception ex)
 {
     Log.Fatal(ex, "An error occurred during database initialization on startup.");
+    throw;
 }
 
 app.Run();

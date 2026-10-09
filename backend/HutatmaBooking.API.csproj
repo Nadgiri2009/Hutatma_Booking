@@ -4,12 +4,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>HutatmaBooking.API</RootNamespace>
+    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);ConflictValidation\**;FinalValidation\**;ServerPaymentValidation\**;VenueCapacityValidation\**;tools\**;wwwroot\uploads\**</DefaultItemExcludesInProjectFolder>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="DTOs\Phase5Phase6DTOs.cs" />
     <Compile Remove="Models\Phase5Phase6Models.cs" />
     <Compile Remove="Services\Phase5Phase6Services.cs" />
     <Compile Remove="Services\Interfaces\IPhase5Phase6Services.cs" />
+    <Content Update="appsettings*.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="QuestPDF" Version="2025.12.3" />

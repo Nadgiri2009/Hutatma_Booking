@@ -74,25 +74,12 @@ Configure these values for the API process using .NET environment-variable namin
 
 Use the values and structure in `backend\appsettings.example.json` as a reference only. Configure SQL encryption and certificate validation for production; do not copy development settings such as `TrustServerCertificate=True` without an approved reason.
 
-## 4. Apply Production Security Gates
+## 4. Production Security Configuration
 
 Complete these checks before exposing the API to the internet:
 
-1. **Restrict CORS.** `backend\Program.cs` currently uses `AllowAnyOrigin()`. Replace it with an explicit allowlist containing only the frontend HTTPS origin. The existing `AllowedOrigins` setting is not currently wired into the CORS policy. For example:
-
-   ```csharp
-   var allowedOrigins = (builder.Configuration["AllowedOrigins"] ?? "")
-       .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-   builder.Services.AddCors(options => options.AddPolicy("AllowFrontend", policy =>
-       policy.WithOrigins(allowedOrigins)
-           .AllowAnyHeader()
-           .AllowAnyMethod()));
-   ```
-
-   Set `AllowedOrigins` to `https://hsm.solapurcorporation.org` if the CORS policy is made configurable. The production frontend uses the same origin for `/api`.
-
-2. **Protect Swagger.** Swagger is currently enabled in every environment. Disable it in production or protect it behind an authenticated/internal-only route before internet exposure.
+1. **Restrict CORS.** The API reads the comma-separated `AllowedOrigins` setting and rejects a missing or wildcard production allowlist. Set it to the frontend HTTPS origin (for example, `https://hsm.solapurcorporation.org`). The frontend normally calls `/api` on the same origin.
+2. **Keep Swagger private.** Swagger is disabled when `ASPNETCORE_ENVIRONMENT=Production`.
 3. **Change default credentials.** Change any seeded/default administrator password before launch and verify that no sample JWT, SQL, Razorpay, SMTP, or ACL gateway credentials are present in the production environment.
 4. **Use HTTPS only for the public domain.** Bind the domain certificate in IIS and redirect domain HTTP traffic to HTTPS. Direct-IP HTTP is for diagnostics only; do not enter applicant or payment information there. Use HTTPS URLs for external payment callbacks.
 
@@ -103,6 +90,8 @@ Run from the repository root on the build machine:
 ```powershell
 dotnet publish .\backend\HutatmaBooking.API.csproj --configuration Release --output .\artifacts\api
 ```
+
+The publish output deliberately excludes local `appsettings*.json`, validation fixtures, and uploaded ID proofs. Provide all production settings through the protected process environment or secret store before starting the API.
 
 1. Copy the contents of `artifacts\api` to a versioned directory on the server, for example `D:\Sites\HutatmaApi\releases\2026-10-07`.
 2. Create an IIS application pool with **.NET CLR Version: No Managed Code**.

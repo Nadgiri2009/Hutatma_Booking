@@ -102,7 +102,7 @@
     return text ? '<div class="alert ' + (type || "") + '">' + esc(text) + '</div>' : "";
   }
   function footer() {
-    return '<footer class="footer"><div class="container split"><div><strong>Hutatma Smruti Mandir</strong><br><span class="muted">Venue Booking System</span></div><div><a href="/about">About</a> · <a href="/gallery">Gallery</a> · <a href="/contact">Contact</a> · <a href="/admin/login">Staff Login</a></div></div></footer>';
+    return '<footer class="footer"><div class="container split"><div><strong>Hutatma Smruti Mandir</strong><br><span class="muted">Venue Booking System</span></div><div><a href="/about">About</a> · <a href="/gallery">Gallery</a> · <a href="/contact">Contact</a></div></div></footer>';
   }
   function publicShell(content) {
     var links = navItems.map(function (item) {
