@@ -432,6 +432,8 @@ public class ReceiptsController : ControllerBase
             .Include(item => item.Booking)
                 .ThenInclude(booking => booking.Applicant)
             .Include(item => item.Booking)
+                .ThenInclude(booking => booking.BankDetail)
+            .Include(item => item.Booking)
                 .ThenInclude(booking => booking.EquipmentItems)
             .FirstOrDefaultAsync(item =>
                 item.Booking.BookingNumber == bookingNumber &&
@@ -454,6 +456,8 @@ public class ReceiptsController : ControllerBase
                 .ThenInclude(booking => booking.VenuePricing)
             .Include(item => item.Booking)
                 .ThenInclude(booking => booking.Applicant)
+            .Include(item => item.Booking)
+                .ThenInclude(booking => booking.BankDetail)
             .Include(item => item.Booking)
                 .ThenInclude(booking => booking.EquipmentItems)
             .FirstOrDefaultAsync(item =>

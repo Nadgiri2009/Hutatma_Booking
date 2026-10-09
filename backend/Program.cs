@@ -14,8 +14,11 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
-var allowedOrigins = (builder.Configuration["AllowedOrigins"] ?? "")
+var configuredOrigins = (builder.Configuration["AllowedOrigins"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var allowedOrigins = builder.Environment.IsDevelopment()
+    ? configuredOrigins.Concat(["http://localhost:8081", "http://127.0.0.1:8081"]).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+    : configuredOrigins;
 if (builder.Environment.IsProduction() &&
     (allowedOrigins.Length == 0 || allowedOrigins.Any(origin => origin == "*")))
 {

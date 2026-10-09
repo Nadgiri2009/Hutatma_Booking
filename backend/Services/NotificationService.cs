@@ -116,44 +116,105 @@ public class NotificationService : INotificationService
             throw new InvalidOperationException("No email address is registered for this booking.");
 
         var reference = payment.TransactionRef ?? payment.GatewayPaymentId ?? "N/A";
-        var amount = payment.Amount.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("en-IN"));
+        var amountCulture = System.Globalization.CultureInfo.GetCultureInfo("en-IN");
+        var amount = payment.Amount.ToString("N2", amountCulture);
+        var applicant = booking.Applicant;
+        var bank = booking.BankDetail;
         var logoPath = Path.Combine(_environment.WebRootPath, "SMC.png");
         var logoAvailable = File.Exists(logoPath);
         var logo = logoAvailable
-            ? "<img src=\"cid:smc-logo\" alt=\"Hutatma Smruti Mandir\" style=\"display:block;max-width:180px;max-height:90px;margin:0 auto 12px\">"
+            ? "<img src=\"cid:smc-logo\" alt=\"SMC logo\" width=\"72\" height=\"72\" style=\"display:block;width:72px;height:72px;object-fit:contain\">"
             : "";
+        var applicantRows = new[]
+        {
+            ("Applicant Name", applicant?.FullName ?? "N/A"),
+            ("Mobile", applicant?.Mobile ?? "N/A"),
+            ("Alternate Mobile", applicant?.AlternateMobile ?? "N/A"),
+            ("Email", applicant?.Email ?? "N/A"),
+            ("Address", applicant?.Address ?? "N/A"),
+            ("Function", $"{applicant?.FunctionName ?? "N/A"} ({applicant?.FunctionType ?? "N/A"})"),
+            ("Expected Guests", applicant?.ExpectedGuests.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "N/A"),
+            ("ID Proof Type", applicant?.IDProofType ?? "N/A")
+        };
+        var bookingRows = new List<(string Label, string Value)>
+        {
+            ("Booking ID", booking.BookingNumber),
+            ("Venue", booking.Venue?.VenueName ?? "N/A"),
+            ("Price Item", booking.VenuePricing?.PriceItemName ?? "N/A"),
+            ("Booking Dates", $"{booking.FromDate:dd MMM yyyy} to {booking.ToDate:dd MMM yyyy}"),
+            ("Session", booking.Session == "FullDay" ? "Full Day" : booking.Session),
+            ("Total Days", booking.TotalDays.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            ("Booking Status", booking.Status),
+            ("Base Rent", $"INR {booking.BaseRent.ToString("N2", amountCulture)}"),
+            ("Holiday Charges", $"INR {booking.HolidayCharge.ToString("N2", amountCulture)}"),
+            ("Equipment Charges", $"INR {booking.EquipmentCharge.ToString("N2", amountCulture)}")
+        };
+        var equipmentDetails = booking.EquipmentItems
+            .Where(item => item.Quantity > 0)
+            .OrderBy(item => item.EquipmentName)
+            .Select(item => $"{item.EquipmentName}: {item.Quantity} x INR {item.UnitPrice.ToString("N2", amountCulture)}")
+            .ToList();
+        if (equipmentDetails.Count > 0)
+            bookingRows.Add(("Equipment", string.Join("; ", equipmentDetails)));
+        bookingRows.AddRange(new[]
+        {
+            ("Security Deposit", $"INR {booking.SecurityDeposit.ToString("N2", amountCulture)}"),
+            ("CGST", $"INR {booking.CGSTAmount.ToString("N2", amountCulture)}"),
+            ("SGST", $"INR {booking.SGSTAmount.ToString("N2", amountCulture)}"),
+            ("TOTAL PAID", $"INR {amount}")
+        });
+        var paymentAndBankRows = new[]
+        {
+            ("Receipt Number", receiptNumber),
+            ("Payment Status", payment.Status),
+            ("Payment Method", payment.PaymentMethod),
+            ("Transaction Reference", reference),
+            ("Payment Date", payment.PaymentDate?.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A"),
+            ("Account Holder", bank?.AccountHolderName ?? "N/A"),
+            ("Bank Name", bank?.BankName ?? "N/A"),
+            ("Account Number", bank?.AccountNumber ?? "N/A"),
+            ("Branch", bank?.BranchName ?? "N/A"),
+            ("IFSC Code", bank?.IFSCCode ?? "N/A"),
+            ("MICR Code", bank?.MICRCode ?? "N/A")
+        };
         var body = $"""
             <!doctype html>
-            <html><body style="margin:0;padding:24px;background:#f3f1f4;font-family:Arial,sans-serif;color:#29232d">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:#fff;border:1px solid #e5dfe8;border-radius:8px">
-                <tr><td style="padding:28px 32px 18px;text-align:center;border-bottom:3px solid #50175d">
-                  {logo}<h1 style="margin:0;color:#50175d;font-size:22px">Hutatma Smruti Mandir</h1>
-                  <p style="margin:6px 0 0;color:#625969">Booking payment receipt</p>
+            <html><body style="margin:0;padding:24px;background:#f3f1f4;font-family:Arial,Helvetica,sans-serif;color:#29232d">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:760px;margin:0 auto;background:#fff;border:1px solid #e5dfe8;border-collapse:collapse">
+                <tr><td style="padding:20px 24px 14px;border-bottom:3px solid #50175d">
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse"><tr>
+                    <td style="vertical-align:middle"><h1 style="margin:0;color:#50175d;font-size:20px">Hutatma Smruti Mandir</h1>
+                      <p style="margin:5px 0 0;color:#625969;font-size:12px">OFFICIAL VENUE BOOKING PAYMENT RECEIPT</p>
+                      <p style="margin:8px 0 0;color:#625969;font-size:12px">Receipt No: {WebUtility.HtmlEncode(receiptNumber)} &nbsp; | &nbsp; Issued: {DateTime.Now:dd MMM yyyy}</p>
+                    </td><td style="width:82px;text-align:right;vertical-align:middle">{logo}</td>
+                  </tr></table>
                 </td></tr>
-                <tr><td style="padding:24px 32px">
-                  <p style="margin:0 0 16px">Dear {WebUtility.HtmlEncode(booking.Applicant?.FullName ?? "Applicant")},</p>
-                  <p style="margin:0 0 20px">Your payment has been recorded successfully. The official receipt is attached as a PDF.</p>
-                  <table role="presentation" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse">
-                    {EmailRow("Booking ID", booking.BookingNumber)}
-                    {EmailRow("Receipt Number", receiptNumber)}
-                    {EmailRow("Venue", booking.Venue?.VenueName ?? "N/A")}
-                    {EmailRow("Booking Dates", $"{booking.FromDate:dd MMM yyyy} to {booking.ToDate:dd MMM yyyy}")}
-                    {EmailRow("Session", booking.Session == "FullDay" ? "Full Day" : booking.Session)}
-                    {EmailRow("Payment Reference", reference)}
-                    {EmailRow("Amount Paid", $"INR {amount}")}
-                    {EmailRow("Payment Date", payment.PaymentDate?.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A")}
-                  </table>
-                  <p style="margin:20px 0 0;color:#625969;font-size:13px">Please retain the attached receipt for your records. For assistance, contact Hutatma Smruti Mandir.</p>
+                <tr><td style="padding:6px 24px 16px">
+                  <p style="margin:8px 0 12px;font-size:13px">Dear {WebUtility.HtmlEncode(applicant?.FullName ?? "Applicant")}, your payment has been recorded. The single-page receipt is attached as a PDF.</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse"><tr>
+                    <td style="width:50%;padding-right:5px;vertical-align:top">{EmailSection("SECTION 1 - APPLICATION DETAILS", applicantRows)}</td>
+                    <td style="width:50%;padding-left:5px;vertical-align:top">{EmailSection("SECTION 2 - BOOKING AND CHARGES DETAILS", bookingRows)}</td>
+                  </tr></table>
+                  {EmailSection("SECTION 3 - PAYMENT AND BANK DETAILS", paymentAndBankRows)}
+                  <p style="margin:12px 0 0;color:#625969;font-size:11px">Please retain this receipt for your records. This is an automated message; please do not reply.</p>
                 </td></tr>
-                <tr><td style="padding:14px 32px;background:#f8f6f9;color:#756c7a;text-align:center;font-size:12px">This is an automated message. Please do not reply to this email.</td></tr>
               </table>
             </body></html>
             """;
         await SendEmailAsync(recipientEmail, "Hutatma Smruti Mandir - payment receipt", body, receiptPdf, receiptNumber, logoPath, logoAvailable);
     }
 
-    private static string EmailRow(string label, string value) =>
-        $"<tr><td style=\"border-bottom:1px solid #eee9f0;color:#625969;width:38%\">{WebUtility.HtmlEncode(label)}</td><td style=\"border-bottom:1px solid #eee9f0;font-weight:600\">{WebUtility.HtmlEncode(value)}</td></tr>";
+    private static string EmailSection(string title, IEnumerable<(string Label, string Value)> rows)
+    {
+        var content = string.Join("", rows.Select(row =>
+            $"<tr><td style=\"padding:5px 7px;border-bottom:1px solid #eee9f0;color:#625969;width:34%;font-size:11px\">{WebUtility.HtmlEncode(row.Label)}</td><td style=\"padding:5px 7px;border-bottom:1px solid #eee9f0;font-weight:600;font-size:11px\">{WebUtility.HtmlEncode(row.Value)}</td></tr>"));
+        return $"""
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin-top:8px;border:1px solid #e5dfe8;border-collapse:collapse">
+              <tr><th colspan="2" style="padding:7px 9px;background:#f3edf5;border-left:3px solid #7d3688;color:#50175d;text-align:left;font-size:12px">{WebUtility.HtmlEncode(title)}</th></tr>
+              {content}
+            </table>
+            """;
+    }
 
     private async Task SendEmailAsync(string toEmail, string subject, string body, byte[] receiptPdf, string receiptNumber, string logoPath, bool logoAvailable)
     {
