@@ -1,4 +1,4 @@
-import { renderBookingStep } from "./booking/booking-workflow.js";
+import { renderBookingStep } from "./booking/booking-workflow.js?v=20261013-1";
 
 (function () {
   "use strict";

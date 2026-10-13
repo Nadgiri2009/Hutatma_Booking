@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/steps/booking-summary-step.css?v=20261013-1") %>" />
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/steps/bank-details-step.css?v=20261013-1") %>" />
     <link rel="stylesheet" href="<%= ResolveUrl("~/Content/booking/steps/booking-confirmation-step.css?v=20261013-1") %>" />
-    <script type="module" src="<%= ResolveUrl("~/Scripts/app.js?v=20261009-2") %>"></script>
+    <script type="module" src="<%= ResolveUrl("~/Scripts/app.js?v=20261013-1") %>"></script>
 </head>
 <body>
     <div id="app" data-screen="<%= Server.HtmlEncode(Screen) %>" data-api-base="<%= Server.HtmlEncode(ApiBaseUrl) %>">
