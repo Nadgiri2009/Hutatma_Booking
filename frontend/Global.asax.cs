@@ -18,8 +18,6 @@ namespace HutatmaBooking.WebForms
             AddRoute("cancel-booking", "cancel-booking");
             AddRoute("track-refund", "track-refund");
             AddRoute("book", "book");
-            AddRoute("admin/login", "admin/login");
-            AddRoute("clerk/login", "admin/login");
             AddRoute("admin", "admin/dashboard");
             AddRoute("admin/dashboard", "admin/dashboard");
             AddRoute("admin/slot-availability", "admin/slot-availability");

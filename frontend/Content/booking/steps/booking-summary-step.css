@@ -1,2 +1,21 @@
-.booking-summary-step .panel h2{color:var(--purple)}
-.booking-summary-step .table-wrap{margin-top:16px}
+.booking-summary-step{display:grid;gap:18px}
+.booking-summary-step>.grid{align-items:stretch}
+.booking-summary-step .card{height:100%;padding:24px}
+.booking-summary-step .card h2{margin-bottom:16px;color:var(--purple);font-size:1.15rem}
+.booking-summary-step .card table{width:100%;min-width:0;border-collapse:collapse}
+.booking-summary-step .card th,.booking-summary-step .card td{padding:11px 12px;border-bottom:1px solid #edf0f2}
+.booking-summary-step .card th{width:42%;background:#faf7fb;color:#514559;font-weight:650}
+.booking-summary-step .card td{font-weight:550;overflow-wrap:anywhere}
+.booking-summary-step .card tr:last-child th,.booking-summary-step .card tr:last-child td{border-bottom:0}
+.booking-summary-step .card table+h2{margin:20px 0 8px;padding:14px 0 0;border-top:1px solid var(--line);font-size:1.3rem}
+.booking-summary-step .card p{margin:12px 0 0;color:var(--muted);font-size:14px}
+.booking-summary-step .actions{align-items:center;justify-content:space-between;margin-top:0;padding-top:4px}
+.booking-summary-step .actions button{min-height:44px}
+
+@media(max-width:600px){
+  .booking-summary-step .card{padding:16px}
+  .booking-summary-step .card th,.booking-summary-step .card td{padding:9px 8px;font-size:14px}
+  .booking-summary-step .card th{width:40%}
+  .booking-summary-step .actions{justify-content:stretch}
+  .booking-summary-step .actions button{flex:1}
+}

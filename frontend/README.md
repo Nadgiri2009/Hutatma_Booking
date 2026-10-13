@@ -1,6 +1,6 @@
 # ASP.NET Web Forms frontend
 
-This is the ASP.NET Web Forms frontend. It uses the existing `backend/` ASP.NET Core 8 API, API contracts, SQL Server schema, migrations, and booking/refund validation.
+This is the ASP.NET Web Forms frontend targeting .NET Framework 4.8. Its current page handlers use ADO.NET and direct SQL Server queries through `Data/SqlStore.cs`. The separate ASP.NET Core API remains in `backend/`, but the current Web Forms screens do not call it.
 
 ## Requirements and configuration
 
@@ -27,6 +27,6 @@ Public: about, gallery, contact/complaints, booking, booking lookup/print, refun
 
 The booking flow no longer collects or displays applicant details. Booking submission remains blocked until the citizen profile API is connected and required applicant details can be loaded from the main database.
 
-The four booking steps are separated into reusable JavaScript modules with step-scoped styles. See [BOOKING-WORKFLOW-INTEGRATION.md](BOOKING-WORKFLOW-INTEGRATION.md) for the complete file list, shared context contract, and integration instructions.
+The booking page is rendered by the Web Forms code-behind. Booking-related styles are kept under `Content/booking/`; the previous standalone JavaScript step modules and their integration handoff are no longer part of this frontend.
 
 Admin: dashboard, bookings, slot availability, payments, venues/pricing, holidays, gallery, notices, complaints, cancellations, refund requests, users, audit report, and receipt printing.

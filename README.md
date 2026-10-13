@@ -1,10 +1,11 @@
 # Hutatma Smruti Mandir Venue Booking System
 
-The application uses ASP.NET Web Forms for the frontend, ASP.NET Core 8 for
-the API, and SQL Server with Entity Framework Core for persistence. The
-frontend conversion preserves the existing booking, payment, cancellation,
-refund, staff, and administration flows while continuing to use the existing
-API contracts and database migrations.
+The checked-out application currently contains an ASP.NET Web Forms frontend,
+an ASP.NET Core 8 API, and SQL Server persistence through Entity Framework
+Core. The Web Forms migration is in progress; the current `Site.aspx` shell
+does not yet replace all citizen and department workflows. Do not treat the
+migration as complete or remove the API until the approved page-by-page
+replacement is implemented and tested.
 
 ## Project structure
 
@@ -12,7 +13,7 @@ API contracts and database migrations.
 frontend/                         ASP.NET Web Forms (.NET Framework 4.8)
   Site.aspx                       Routed Web Forms entry point
   Global.asax                     Friendly-route registration
-  Scripts/app.js                  Page interactions and existing API calls
+  Site.aspx.cs                    Server-side rendering and request handling
   Content/site.css                Responsive site styles
 backend/                          ASP.NET Core 8 Web API
   Controllers/                    Existing application API
@@ -21,10 +22,11 @@ backend/                          ASP.NET Core 8 Web API
 database/                         Reference/manual SQL scripts
 ```
 
-The API and SQL Server schema remain the source of truth for application
-rules, validation, pricing, booking conflicts, and persistence. Do not apply
-the historical scripts in `database/` on top of an EF-managed database; see
-`database/README.md`.
+The API and EF migrations remain the current application's behavior and
+schema reference while the migration is underway. For the proposed Web Forms
+schema script and safe fresh/existing-database handling, see
+[`database/README.md`](./database/README.md). Do not run the historical scripts
+in `database/` on an EF-managed database.
 
 ## Requirements
 
@@ -61,15 +63,18 @@ the historical scripts in `database/` on top of an EF-managed database; see
 
 ## Application routes
 
-The public site includes home, venue information, gallery, contact/complaints,
-booking, booking lookup and receipt printing, cancellation applications,
-refund applications, and refund tracking.
+The existing API implements the public home, venue information, gallery,
+contact/complaints, booking, booking lookup and receipt printing, cancellation
+applications, refund applications, and refund tracking. These are not all
+available in the current Web Forms shell yet.
 
-The staff portal includes OTP sign-in and role-aware administration for the
-dashboard, bookings, slot availability, payments, venues and pricing,
-holidays, gallery, notices, complaints, cancellations, refunds, users,
-receipts, and audit records. Direct navigation to these friendly routes is
-handled by Web Forms routing.
+The existing API also implements staff OTP sign-in and role-aware
+administration for the dashboard, bookings, slot availability, payments,
+venues and pricing, holidays, gallery, notices, complaints, cancellations,
+refunds, users, receipts, and audit records. The migration will remove the
+standalone staff sign-in only when equivalent pages are integrated with the
+host Department Panel; the module is not yet ready to replace these API
+workflows.
 
 ## Production deployment
 

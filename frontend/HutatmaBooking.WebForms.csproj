@@ -36,6 +36,7 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Routing" />
   </ItemGroup>
@@ -46,17 +47,12 @@
     <Compile Include="Site.aspx.cs">
       <DependentUpon>Site.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Data\SqlStore.cs" />
     <Content Include="Global.asax" />
     <Content Include="Site.aspx" />
     <Content Include="Web.config" />
     <Content Include="packages.config" />
     <Content Include="README.md" />
-    <Content Include="Scripts\app.js" />
-    <Content Include="Scripts\booking\booking-workflow.js" />
-    <Content Include="Scripts\booking\steps\availability-step.js" />
-    <Content Include="Scripts\booking\steps\booking-summary-step.js" />
-    <Content Include="Scripts\booking\steps\bank-details-step.js" />
-    <Content Include="Scripts\booking\steps\booking-confirmation-step.js" />
     <Content Include="Content\site.css" />
     <Content Include="Content\site-attached.css" />
     <Content Include="Content\booking\booking-progress.css" />
