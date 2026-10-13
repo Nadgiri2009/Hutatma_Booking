@@ -73,5 +73,6 @@ handled by Web Forms routing.
 
 ## Production deployment
 
-See `Deployment_Guide.md` for IIS bindings, SQL Server configuration,
-secrets, publishing, smoke tests, and rollback instructions.
+See [VM_GO_LIVE_STEPS.md](VM_GO_LIVE_STEPS.md) for the step-by-step Windows VM
+setup and [Deployment_Guide.md](Deployment_Guide.md) for additional IIS,
+SQL Server, secrets, publishing, smoke-test, and rollback details.
