@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide deploys the ASP.NET Web Forms (`frontend`) frontend and ASP.NET Core 8 API on Windows Server/IIS, backed by SQL Server. The public site uses `hsm.solapurcorporation.org` and `115.242.140.250`; IIS serves the ASPX application on the public bindings and reverse-proxies `/api/*` to an API site bound only to loopback.
+This guide deploys the React frontend and ASP.NET Core 8 API on Windows Server/IIS, backed by SQL Server. The public site uses `hsm.solapurcorporation.org` and `115.242.140.250`; IIS serves the frontend on the public bindings and reverse-proxies `/api/*` to an API site bound only to loopback.
 
 ## 1. Prepare the Server
 
@@ -13,14 +13,14 @@ This guide deploys the ASP.NET Web Forms (`frontend`) frontend and ASP.NET Core 
 
    Confirm the returned IPv4 address is `115.242.140.250`. Ensure the server owns that public IP, or that the router/NAT forwards ports 80 and 443 to it.
 3. Install Windows Server updates and IIS with Static Content, the IIS URL Rewrite module, and Application Request Routing (ARR). Enable ARR's **Proxy** feature at the server level in IIS Manager.
-4. Install the .NET Framework 4.8 Developer Pack/ASP.NET 4.8 IIS feature for Web Forms and the .NET 8 Hosting Bundle for the API; then restart IIS.
+4. Install the .NET 8 Hosting Bundle on the IIS server, then restart IIS.
 5. Install SQL Server 2022 (or a supported managed SQL Server) and configure encrypted connectivity from the API server.
-6. Install Visual Studio Build Tools with the .NET Framework 4.8 targeting pack on the build machine.
+6. Install Node.js 18 LTS on the build machine. Node.js is needed only to build the frontend.
 7. Obtain a trusted TLS certificate for `hsm.solapurcorporation.org` and install it in the server's Local Computer certificate store.
 
 ### Public IIS bindings
 
-Create one frontend IIS site with its physical path set to the deployed `frontend` application directory. Configure its application pool for **.NET CLR v4.0 / Integrated**. Add these bindings to that site:
+Create one frontend IIS site, with its physical path set to the deployed React `build` directory. Add these bindings to that site:
 
 | Type | IP address | Port | Host name | Certificate |
 | --- | --- | ---: | --- | --- |
@@ -28,7 +28,7 @@ Create one frontend IIS site with its physical path set to the deployed `fronten
 | HTTP | `115.242.140.250` | 80 | *(leave blank)* | None |
 | HTTPS | All Unassigned (or `115.242.140.250`) | 443 | `hsm.solapurcorporation.org` | Domain certificate; enable SNI if sharing the IP |
 
-The blank-host HTTP binding lets `http://115.242.140.250` reach the site. Set the production `ApiBaseUrl` in `frontend\Web.config` to `/api`; its rewrite rule forwards requests to the API's loopback listener. Enable ARR proxy in IIS for that rule. Use the domain URL for normal public access. A regular domain certificate does **not** validate `https://115.242.140.250`; only add an HTTPS IP binding if the certificate includes that IP address in its subject alternative names.
+The blank-host HTTP binding lets `http://115.242.140.250` reach the site; the included frontend `web.config` redirects HTTP requests, including IP requests, to `https://hsm.solapurcorporation.org`. Use the domain URL for normal public access. A regular domain certificate does **not** validate `https://115.242.140.250`; only add an HTTPS IP binding if the certificate includes that IP address in its subject alternative names.
 
 Open inbound TCP 80 and 443 in Windows Firewall and any upstream firewall/NAT. Do not expose the API's loopback port (5001) publicly.
 
@@ -74,12 +74,16 @@ Configure these values for the API process using .NET environment-variable namin
 
 Use the values and structure in `backend\appsettings.example.json` as a reference only. Configure SQL encryption and certificate validation for production; do not copy development settings such as `TrustServerCertificate=True` without an approved reason.
 
-## 4. Production Security Configuration
+## 4. Apply Production Security Gates
 
 Complete these checks before exposing the API to the internet:
 
-1. **Restrict CORS.** The API reads the comma-separated `AllowedOrigins` setting and rejects a missing or wildcard production allowlist. Set it to the frontend HTTPS origin (for example, `https://hsm.solapurcorporation.org`). The frontend normally calls `/api` on the same origin.
-2. **Keep Swagger private.** Swagger is disabled when `ASPNETCORE_ENVIRONMENT=Production`.
+1. **Restrict CORS.** `backend\Program.cs` reads the comma-separated
+   `AllowedOrigins` setting and requires an explicit non-wildcard list in
+   Production. Set it to `https://hsm.solapurcorporation.org`. The frontend
+   uses the same-origin `/api` proxy, so do not add broad origins.
+2. **Protect Swagger.** The API exposes Swagger only outside Production.
+   Ensure `ASPNETCORE_ENVIRONMENT=Production` is set for the IIS API process.
 3. **Change default credentials.** Change any seeded/default administrator password before launch and verify that no sample JWT, SQL, Razorpay, SMTP, or ACL gateway credentials are present in the production environment.
 4. **Use HTTPS only for the public domain.** Bind the domain certificate in IIS and redirect domain HTTP traffic to HTTPS. Direct-IP HTTP is for diagnostics only; do not enter applicant or payment information there. Use HTTPS URLs for external payment callbacks.
 
@@ -91,8 +95,6 @@ Run from the repository root on the build machine:
 dotnet publish .\backend\HutatmaBooking.API.csproj --configuration Release --output .\artifacts\api
 ```
 
-The publish output deliberately excludes local `appsettings*.json`, validation fixtures, and uploaded ID proofs. Provide all production settings through the protected process environment or secret store before starting the API.
-
 1. Copy the contents of `artifacts\api` to a versioned directory on the server, for example `D:\Sites\HutatmaApi\releases\2026-10-07`.
 2. Create an IIS application pool with **.NET CLR Version: No Managed Code**.
 3. Create an IIS site named `HutatmaBookingApi` pointing to the published API directory. Add a single HTTP binding to IP `127.0.0.1`, port `5001`, with no host name. Do not add a public binding. Keep the generated ASP.NET Core `web.config` in the published directory.
@@ -103,17 +105,20 @@ The publish output deliberately excludes local `appsettings*.json`, validation f
 
 ## 6. Build and Publish the Frontend
 
-Build the ASP.NET Web Forms project from the repository root:
+Build the frontend to use a relative API URL so both the domain and IP bindings work without a separate API DNS name. From the repository root:
 
 ```powershell
-dotnet build .\frontend\HutatmaBooking.WebForms.csproj --configuration Release
+Push-Location .\frontend
+npm ci
+$env:REACT_APP_API_URL = '/api'
+npm run build
+Pop-Location
 ```
 
-1. Set `ApiBaseUrl` in `frontend\Web.config` to `/api` for production. Its URL Rewrite rule forwards same-origin API requests to `http://127.0.0.1:5001`; ensure ARR proxy is enabled.
-2. Deploy the `frontend` application files and compiled `bin\HutatmaBooking.WebForms.dll` to the frontend IIS site's physical path.
-3. Configure the frontend app pool as **.NET CLR v4.0 / Integrated**. Keep the API site in a separate **No Managed Code** pool bound only to `127.0.0.1:5001`.
-4. Verify direct navigation and refresh for routes such as `/book`, `/cancel-booking`, and `/admin/login`, along with `/api/venues`.
-5. Never put API credentials in browser code or public app settings.
+1. Confirm that `frontend\build` is generated and that API requests use `/api` (not `localhost` or a hard-coded server address).
+2. Deploy the contents of `frontend\build` to the frontend IIS site's physical path. Its included `web.config` redirects domain HTTP to HTTPS, proxies `/api/*` to the loopback API site, and falls back to `index.html` for React routes.
+3. In IIS Manager, verify the domain and IP bindings. The API site must remain bound only to `127.0.0.1:5001`.
+4. Do not put API credentials or other secrets in React environment variables; build variables are public in the generated JavaScript.
 
 ## 7. Configure Storage, Logs, and Backups
 
@@ -142,4 +147,4 @@ dotnet build .\frontend\HutatmaBooking.WebForms.csproj --configuration Release
 
 ## Local Wi-Fi Testing Is Not Production Hosting
 
-For temporary same-network testing of the ASPX frontend, use IIS Express or local IIS and configure `ApiBaseUrl` to an API host reachable from the test device. Use the current Wi-Fi IP shown by `Get-NetIPAddress`; it can change. Do not expose test credentials to the public internet.
+For temporary same-network phone testing only, bind the React dev server and API to `0.0.0.0`, configure `REACT_APP_API_URL` to the PC's Wi-Fi IP, and allow the selected ports on the PC's private-network firewall. Use the current Wi-Fi IP shown by `Get-NetIPAddress`; it can change. Do not expose the development server or HTTP test credentials to the public internet.
